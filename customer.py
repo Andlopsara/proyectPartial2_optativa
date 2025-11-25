@@ -1,7 +1,7 @@
 from typing import List
 
 class Customer:
-    def __init__(self, id, name, secondName, lastName, secondLastName, phone, email, state, curp):
+    def __init__(self, id, name, secondName, lastName, secondLastName, phone, email, state, curp, password=""):
         self.__id = id
         self.__name = name
         self.__secondName = secondName
@@ -11,6 +11,7 @@ class Customer:
         self.__email = email
         self.__state = state
         self.__curp = curp
+        self.__password = password
         self.__reservations: List = []
         self.__service_reservations: List = []
 
@@ -35,6 +36,9 @@ class Customer:
 
     def getEmail(self): return self.__email
     def setEmail(self, email): self.__email = email
+
+    def getPassword(self): return getattr(self, '_Customer__password', '')
+    def setPassword(self, password): self.__password = password
 
     def getState(self): return self.__state
     def setState(self, state): self.__state = state

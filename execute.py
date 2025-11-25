@@ -6,9 +6,6 @@ import uuid
 
 # Importar clases de POO
 from customer import Customer
-# No importamos Room, Reservation, Payment, etc., aquí se usa la versión stub para simplificar el main
-# Se importan Service, Reservation y ServiceReservation solo para sus métodos showInfo en las vistas.
-# Importamos la versión final de la clase Service para tener el costo
 from service import Service 
 from reservationService import ServiceReservation 
 from reservation import Reservation 
@@ -16,6 +13,7 @@ from room import Room
 from employee import Employee
 from receptionist import Receptionist
 from bellboy import Bellboy
+from payment import Payment
 
 # ----------------- Definición Global de Colores -----------------
 PASTEL_BG = '#E1F5FE'      # Fondo muy claro (Light Blue 50)
@@ -29,11 +27,11 @@ def init_data():
     """Inicializa datos de demo usando las clases POO."""
     
     # Clientes de Demo (usando la clase Customer importada)
-    customer1 = Customer(1, "Andrea", "Sarahi", "Lopez", "Guerrero", "4420000000", "andrea@mail.com", "Querétaro", "LOGA001122QRO")
-    customer2 = Customer(2, "Juan", "", "Perez", "Vera", "4423333333", "juan@mail.com", "Querétaro", "PEVJ001122QRO")
+    customer1 = Customer(1, "Andrea", "Sarahi", "Lopez", "Guerrero", "4420000000", "andrea@mail.com", "Querétaro", "LOGA001122QRO", password="andrea123")
+    customer2 = Customer(2, "Juan", "", "Perez", "Vera", "4423333333", "juan@mail.com", "Querétaro", "PEVJ001122QRO", password="juan123")
     
     # Empleados de Demo (usando la clase Receptionist importada)
-    receptionist = Receptionist(1, "Brigitte", "", "Herrera", "Rodriguez", "4421111111", "brigitte@mail.com", "Active", "HERB001122QRO")
+    receptionist = Receptionist(1, "Brigitte", "", "Herrera", "Rodriguez", "4421111111", "brigitte@mail.com", "Active", "HERB001122QRO", password="brigitte123")
     
     # Habitaciones de Demo (usando la clase Room importada)
     # Crear 100 habitaciones (IDs 101-200) con diferentes tipos y precios
@@ -107,6 +105,10 @@ class HotelGUI:
         # Inicialización de IDs (Se debe hacer después de init_data)
         self.next_reservation_id = max(self.data['reservations'].keys()) + 1 if self.data['reservations'] else 1
         self.next_service_reservation_id = max(self.data['service_reservations'].keys()) + 1 if self.data['service_reservations'] else 1
+        self.next_payment_id = 1  # Contador para pagos
+        
+        # Diccionario para almacenar pagos
+        self.data['payments'] = {}
         
         self.frames = {}
 
@@ -157,6 +159,14 @@ class HotelGUI:
         self.data['employees'][key] = employee_obj
         print(f"GUI Controller: Empleado {employee_obj.getFirstName()} añadido al sistema (ID {key}).")
         return employee_obj
+
+    def add_new_payment(self, payment_obj):
+        """Añade un nuevo pago a la base de datos central."""
+        pay_id = self.next_payment_id
+        self.data['payments'][pay_id] = payment_obj
+        self.next_payment_id += 1
+        print(f"GUI Controller: Pago #{pay_id} procesado por ${payment_obj.getAmount():.2f}")
+        return payment_obj
 
 # ----------------- Pantalla de Creación de Reserva de Servicio (NUEVA) -----------------
 
@@ -337,24 +347,24 @@ class LoginFormScreen(ttk.Frame):
 
     def login(self):
         email = self.email_entry.get().strip()
-        
+        password = self.password_entry.get()
+
         if self.login_type == "Customer":
             user_obj = self.controller.data['customers'].get(email)
-            if user_obj:
+            if user_obj and user_obj.getPassword() == password:
                 messagebox.showinfo("Éxito", f"Bienvenido, Huésped {user_obj.getName()}")
                 self.controller.show_frame("MainMenuScreen", user_type="Customer", user_obj=user_obj)
             else:
-                messagebox.showerror("Error", "Email de Huésped no encontrado. Intente con 'andrea@mail.com' o 'juan@mail.com'")
+                messagebox.showerror("Error", "Email o contraseña de Huésped incorrectos. Intente con 'andrea@mail.com' / 'andrea123' o 'juan@mail.com' / 'juan123'")
         else: # Employee
-            # En la demo, el ID del empleado es la clave '1' en el diccionario de employees
-            # Buscamos por el email para hacer la demo más intuitiva
-            user_obj = next((emp for emp in self.controller.data['employees'].values() if emp._Employee__email == email), None)
-            
-            if user_obj:
+            # Buscamos por email en empleados y validamos contraseña
+            user_obj = next((emp for emp in self.controller.data['employees'].values() if getattr(emp, 'getEmail', lambda: None)() == email), None)
+
+            if user_obj and user_obj.getPassword() == password:
                 messagebox.showinfo("Éxito", f"Bienvenido, Empleado {user_obj.getFirstName()}")
                 self.controller.show_frame("MainMenuScreen", user_type="Employee", user_obj=user_obj)
             else:
-                messagebox.showerror("Error", "Email de Empleado no encontrado. Intente con 'brigitte@mail.com'")
+                messagebox.showerror("Error", "Email o contraseña de Empleado incorrectos. Intente con 'brigitte@mail.com' / 'brigitte123'")
 
 
 class LoginSuccessScreen(ttk.Frame):
@@ -409,6 +419,8 @@ class MainMenuScreen(ttk.Frame):
 
         # Botones Genéricos (Visibles para todos)
         ttk.Button(self.main_frame, text="Ver Info. Hab. (101)", command=self.view_room_info).grid(row=0, column=0, padx=5, pady=5, sticky='ew')
+        # Botón de prueba para abrir la ventana de pago de la última reserva (útil para debug/QA)
+        ttk.Button(self.main_frame, text="Abrir Pago (última)", command=self.open_last_payment).grid(row=0, column=1, padx=5, pady=5, sticky='ew')
         
         # Botones específicos que se modificarán en set_user
         self.btn_reserva_hab = ttk.Button(self.main_frame, text="Crear Reserva Hab.", command=self.open_create_reservation).grid(row=1, column=0, padx=5, pady=5, sticky='ew')
@@ -459,6 +471,35 @@ class MainMenuScreen(ttk.Frame):
         """Abre la ventana modal para crear una reserva de servicio."""
         # Esta acción es válida tanto para huéspedes (solicitar servicio) como para empleados (registrar solicitud).
         CreateServiceReservationWindow(self.controller.master, self.controller)
+
+    def open_last_payment(self):
+        """Abre la ventana de pago para la última reserva registrada (para pruebas)."""
+        if not self.controller.data.get('reservations'):
+            messagebox.showinfo("Sin Reservas", "No hay reservas registradas para mostrar el pago.")
+            return
+
+        try:
+            last_id = max(self.controller.data['reservations'].keys())
+            reservation = self.controller.data['reservations'][last_id]
+        except Exception:
+            messagebox.showerror("Error", "No se pudo obtener la última reserva.")
+            return
+
+        # Calcular costo total según noches
+        from datetime import datetime
+        try:
+            check_in = datetime.strptime(reservation.getCheckIn(), "%Y-%m-%d").date()
+            check_out = datetime.strptime(reservation.getCheckOut(), "%Y-%m-%d").date()
+            num_nights = (check_out - check_in).days
+            if num_nights < 1:
+                num_nights = 1
+        except Exception:
+            num_nights = 1
+
+        room = reservation.getRoom()
+        total_cost = room.getCost() * num_nights
+
+        PaymentWindow(self.controller.master, self.controller, reservation, total_cost, reservation.getCustomer())
 
 
     def view_room_info(self):
@@ -534,7 +575,7 @@ class CreateReservationWindow(tk.Toplevel):
         tk.Toplevel.__init__(self, master)
         self.controller = controller
         self.title("Crear Nueva Reserva de Habitación")
-        self.geometry("450x450")
+        self.geometry("550x600")
         self.resizable(False, False)
         self.configure(bg=PASTEL_BG)
 
@@ -543,42 +584,119 @@ class CreateReservationWindow(tk.Toplevel):
         
         ttk.Label(main_frame, text="NUEVA RESERVA DE HABITACIÓN", style='Header.TLabel', foreground=PASTEL_HEADER).pack(pady=10)
         
-        form_frame = ttk.Frame(main_frame)
-        form_frame.pack(pady=15, padx=10)
+        # Canvas para scroll
+        canvas = tk.Canvas(main_frame, bg=PASTEL_BG, highlightthickness=0)
+        canvas.pack(side="left", fill="both", expand=True)
+        
+        scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=canvas.yview)
+        scrollbar.pack(side="right", fill="y")
+        
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        form_frame = ttk.Frame(canvas)
+        canvas.create_window((0, 0), window=form_frame, anchor="nw")
+        
+        # Actualizar región scrollable
+        form_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
         
         # Customer Email
-        ttk.Label(form_frame, text="Email del Cliente (Ej: juan@mail.com):").grid(row=0, column=0, sticky="w", pady=5)
-        self.email_entry = ttk.Entry(form_frame, width=30)
-        self.email_entry.grid(row=0, column=1, padx=10, pady=5)
+        ttk.Label(form_frame, text="Email del Cliente (Ej: juan@mail.com):").grid(row=0, column=0, sticky="w", pady=5, padx=5)
+        self.email_entry = ttk.Entry(form_frame, width=40)
+        self.email_entry.grid(row=0, column=1, padx=5, pady=5)
         
         # Llenar con el email del usuario logueado si es cliente
         if controller.frames['MainMenuScreen'].user_type == 'Customer' and controller.frames['MainMenuScreen'].user_obj:
             self.email_entry.insert(0, controller.frames['MainMenuScreen'].user_obj.getEmail())
             self.email_entry.config(state='readonly')
         else:
-            self.email_entry.insert(0, "juan@mail.com") # Dato de demo para empleado/recepcionista
+            self.email_entry.insert(0, "juan@mail.com")
         
-        # Room ID
-        ttk.Label(form_frame, text="ID de Habitación (Ej: 101, 102):").grid(row=1, column=0, sticky="w", pady=5)
-        self.room_id_entry = ttk.Entry(form_frame, width=30)
-        self.room_id_entry.grid(row=1, column=1, padx=10, pady=5)
-        self.room_id_entry.insert(0, "101") # Dato de demo
+        # Tipo de Habitación
+        ttk.Label(form_frame, text="Tipo de Habitación:").grid(row=1, column=0, sticky="w", pady=5, padx=5)
+        self.room_type_var = tk.StringVar(value="Suite")
+        room_type_combo = ttk.Combobox(form_frame, textvariable=self.room_type_var, 
+                                       values=["Suite", "Doble", "Individual"], state="readonly", width=37)
+        room_type_combo.grid(row=1, column=1, padx=5, pady=5)
+        room_type_combo.bind("<<ComboboxSelected>>", self.update_available_rooms)
+        
+        # Información de disponibilidad
+        ttk.Label(form_frame, text="Habitaciones Disponibles:").grid(row=2, column=0, sticky="nw", pady=5, padx=5)
+        
+        # Frame con scroll para mostrar habitaciones disponibles
+        rooms_frame = ttk.Frame(form_frame)
+        rooms_frame.grid(row=2, column=1, padx=5, pady=5, sticky="ew")
+        
+        rooms_canvas = tk.Canvas(rooms_frame, bg=PASTEL_BG, highlightthickness=0, width=280, height=120)
+        rooms_canvas.pack(side="left", fill="both", expand=True)
+        
+        rooms_scrollbar = ttk.Scrollbar(rooms_frame, orient="vertical", command=rooms_canvas.yview)
+        rooms_scrollbar.pack(side="right", fill="y")
+        
+        rooms_canvas.configure(yscrollcommand=rooms_scrollbar.set)
+        
+        self.rooms_inner_frame = ttk.Frame(rooms_canvas)
+        rooms_canvas.create_window((0, 0), window=self.rooms_inner_frame, anchor="nw")
+        
+        self.rooms_inner_frame.bind(
+            "<Configure>",
+            lambda e: rooms_canvas.configure(scrollregion=rooms_canvas.bbox("all"))
+        )
+        
+        self.rooms_canvas = rooms_canvas
+        self.room_selection_var = tk.StringVar()
         
         # Check-In Date
-        ttk.Label(form_frame, text="Fecha de Check-In (AAAA-MM-DD):").grid(row=2, column=0, sticky="w", pady=5)
-        self.check_in_entry = ttk.Entry(form_frame, width=30)
-        self.check_in_entry.grid(row=2, column=1, padx=10, pady=5)
-        self.check_in_entry.insert(0, str(date.today())) 
-
+        ttk.Label(form_frame, text="Fecha de Check-In (AAAA-MM-DD):").grid(row=3, column=0, sticky="w", pady=5, padx=5)
+        self.check_in_entry = ttk.Entry(form_frame, width=40)
+        self.check_in_entry.grid(row=3, column=1, padx=5, pady=5)
+        self.check_in_entry.insert(0, str(date.today()))
+        
         # Check-Out Date
-        ttk.Label(form_frame, text="Fecha de Check-Out (AAAA-MM-DD):").grid(row=3, column=0, sticky="w", pady=5)
-        self.check_out_entry = ttk.Entry(form_frame, width=30)
-        self.check_out_entry.grid(row=3, column=1, padx=10, pady=5)
+        ttk.Label(form_frame, text="Fecha de Check-Out (AAAA-MM-DD):").grid(row=4, column=0, sticky="w", pady=5, padx=5)
+        self.check_out_entry = ttk.Entry(form_frame, width=40)
+        self.check_out_entry.grid(row=4, column=1, padx=5, pady=5)
         self.check_out_entry.insert(0, "2025-12-31")
         
-        # Botón de creación
+        # Número de Personas
+        ttk.Label(form_frame, text="Número de Personas:").grid(row=5, column=0, sticky="w", pady=5, padx=5)
+        self.people_spinbox = ttk.Spinbox(form_frame, from_=1, to=4, width=38)
+        self.people_spinbox.grid(row=5, column=1, padx=5, pady=5)
+        self.people_spinbox.set(2)
+        
+        # Botón de confirmación
         ttk.Button(main_frame, text="CONFIRMAR RESERVA", command=self.process_reservation, 
-                   style='Access.TButton', width=25).pack(pady=30)
+                   style='Access.TButton', width=30).pack(pady=20)
+        
+        # Mostrar habitaciones disponibles inicialmente
+        self.update_available_rooms()
+
+    def update_available_rooms(self, event=None):
+        """Actualiza la lista de habitaciones disponibles según el tipo seleccionado."""
+        # Limpiar el frame anterior
+        for widget in self.rooms_inner_frame.winfo_children():
+            widget.destroy()
+        
+        room_type = self.room_type_var.get()
+        available_rooms = [r for r in self.controller.data['rooms'].values() 
+                          if r.getType() == room_type and r.getStatus() == "Available"]
+        
+        if not available_rooms:
+            ttk.Label(self.rooms_inner_frame, text="No hay habitaciones disponibles de este tipo.").pack(anchor="w")
+            return
+        
+        for i, room in enumerate(sorted(available_rooms, key=lambda x: x.getId())):
+            cost = room.getCost()
+            label_text = f"Habitación {room.getId()} - ${cost:.2f}/noche"
+            rb = ttk.Radiobutton(self.rooms_inner_frame, text=label_text, variable=self.room_selection_var, 
+                                value=str(room.getId()))
+            rb.pack(anchor="w")
+        
+        # Seleccionar la primera por defecto
+        if available_rooms:
+            self.room_selection_var.set(str(available_rooms[0].getId()))
 
     def validate_date(self, date_str):
         """Valida un formato de fecha simple AAAA-MM-DD."""
@@ -593,11 +711,12 @@ class CreateReservationWindow(tk.Toplevel):
     def process_reservation(self):
         """Recoge datos, valida y ejecuta la lógica de creación de reserva POO."""
         email = self.email_entry.get().strip()
-        room_id_str = self.room_id_entry.get().strip()
+        room_id_str = self.room_selection_var.get().strip()
         check_in_str = self.check_in_entry.get().strip()
         check_out_str = self.check_out_entry.get().strip()
+        num_people = self.people_spinbox.get().strip()
 
-        if not all([email, room_id_str, check_in_str, check_out_str]):
+        if not all([email, room_id_str, check_in_str, check_out_str, num_people]):
             messagebox.showwarning("Datos Incompletos", "Todos los campos son obligatorios.")
             return
         
@@ -622,8 +741,14 @@ class CreateReservationWindow(tk.Toplevel):
         if not room_obj:
             messagebox.showerror("Error de Habitación", f"Habitación con ID '{room_id}' no existe.")
             return
+        
+        # 3. Validar que la habitación esté disponible
+        if room_obj.getStatus() != "Available":
+            messagebox.showerror("Habitación No Disponible", 
+                                f"La Habitación {room_id} no está disponible. Por favor, seleccione otra.")
+            return
 
-        # 3. Crear Objeto Reservation
+        # 4. Crear Objeto Reservation
         new_res_id = self.controller.next_reservation_id
         
         reservation = Reservation(
@@ -634,16 +759,112 @@ class CreateReservationWindow(tk.Toplevel):
             room_obj
         )
 
-        # 4. Ejecutar la lógica POO y actualizar la base de datos
-        if reservation.createReservation(): # Esto llama a room.assignCustomer() y customer.makeReservation()
-            self.controller.add_new_reservation(reservation) 
-            messagebox.showinfo("Reserva Exitosa", 
-                                f"Reserva #{new_res_id} creada para {customer_obj.getName()} en Habitación {room_id}. \n"
-                                f"Ahora el estado de la Habitación {room_id} es: {room_obj.getStatus()}")
-            self.destroy() 
+        # 5. Ejecutar la lógica POO y actualizar la base de datos
+        if reservation.createReservation():
+            self.controller.add_new_reservation(reservation)
+            
+            # Calcular costo total (número de noches * costo por noche)
+            from datetime import datetime
+            check_in = datetime.strptime(check_in_str, "%Y-%m-%d").date()
+            check_out = datetime.strptime(check_out_str, "%Y-%m-%d").date()
+            num_nights = (check_out - check_in).days
+            total_cost = room_obj.getCost() * num_nights
+            
+            # Abrir ventana de pago
+            PaymentWindow(self.master, self.controller, reservation, total_cost, customer_obj)
+            self.destroy()
         else:
             messagebox.showerror("Reserva Fallida", 
-                                 f"No se pudo crear la reserva en la Habitación {room_id}. Estado actual: {room_obj.getStatus()}.")
+                                f"No se pudo crear la reserva en la Habitación {room_id}. Estado: {room_obj.getStatus()}")
+
+
+# ----------------- Ventana de Pago (NUEVA) -----------------
+class PaymentWindow(tk.Toplevel):
+    """Ventana modal para procesar el pago de una reserva."""
+    def __init__(self, master, controller, reservation, total_cost, customer):
+        tk.Toplevel.__init__(self, master)
+        self.controller = controller
+        self.reservation = reservation
+        self.total_cost = total_cost
+        self.customer = customer
+        
+        self.title("Procesar Pago")
+        self.geometry("500x450")
+        self.resizable(False, False)
+        self.configure(bg=PASTEL_BG)
+
+        main_frame = ttk.Frame(self, padding="15")
+        main_frame.pack(fill="both", expand=True)
+        
+        ttk.Label(main_frame, text="PROCESAMIENTO DE PAGO", style='Header.TLabel', foreground=PASTEL_HEADER).pack(pady=10)
+        
+        form_frame = ttk.Frame(main_frame)
+        form_frame.pack(pady=15, padx=10, fill="both", expand=True)
+        
+        # Información de la reserva
+        ttk.Label(form_frame, text=f"Reserva #{reservation.getId()}:", font=('Arial', 11, 'bold')).pack(anchor="w", pady=5)
+        ttk.Label(form_frame, text=f"Cliente: {customer.getName()}").pack(anchor="w")
+        ttk.Label(form_frame, text=f"Habitación: {reservation._Reservation__room.getId()}").pack(anchor="w")
+        ttk.Label(form_frame, text=f"Precio por noche: ${reservation._Reservation__room.getCost():.2f}").pack(anchor="w")
+        
+        # Separador
+        ttk.Separator(form_frame, orient="horizontal").pack(fill="x", pady=10)
+        
+        # Monto total
+        total_frame = ttk.Frame(form_frame)
+        total_frame.pack(anchor="w", pady=10)
+        ttk.Label(total_frame, text="TOTAL A PAGAR:", font=('Arial', 12, 'bold')).pack(anchor="w")
+        ttk.Label(total_frame, text=f"${total_cost:.2f}", font=('Arial', 18, 'bold'), foreground=PASTEL_HEADER).pack(anchor="e", padx=20)
+        
+        # Método de pago
+        ttk.Label(form_frame, text="Método de Pago:").pack(anchor="w", pady=(15, 5))
+        self.payment_method_var = tk.StringVar(value="Tarjeta de Crédito")
+        payment_methods = ["Tarjeta de Crédito", "Tarjeta de Débito", "Efectivo", "Transferencia Bancaria"]
+        
+        for method in payment_methods:
+            ttk.Radiobutton(form_frame, text=method, variable=self.payment_method_var, value=method).pack(anchor="w")
+        
+        # Campo de referencia (opcional)
+        ttk.Label(form_frame, text="Referencia/Número de Transacción (Opcional):").pack(anchor="w", pady=(15, 5))
+        self.reference_entry = ttk.Entry(form_frame, width=50)
+        self.reference_entry.pack(anchor="w")
+        
+        # Botones (apilados debajo del formulario)
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(pady=20, fill='x')
+
+        ttk.Button(button_frame, text="PAGAR", command=self.process_payment, 
+               style='Access.TButton').pack(fill='x', pady=5)
+        ttk.Button(button_frame, text="CANCELAR", command=self.destroy).pack(fill='x', pady=5)
+
+    def process_payment(self):
+        """Procesa el pago y lo registra en la base de datos."""
+        payment_method = self.payment_method_var.get()
+        
+        # Importar Payment class
+        from payment import Payment
+        
+        # Crear objeto Payment
+        payment = Payment(
+            self.controller.next_payment_id,
+            self.total_cost,
+            payment_method,
+            self.reservation
+        )
+        
+        # Procesar el pago
+        payment.processPayment()
+        
+        # Agregar a la base de datos
+        self.controller.add_new_payment(payment)
+        
+        # Mostrar confirmación
+        messagebox.showinfo("Pago Exitoso", 
+                           f"Pago de ${self.total_cost:.2f} procesado correctamente.\n"
+                           f"Método: {payment_method}\n"
+                           f"Reserva #{self.reservation.getId()} confirmada.")
+        
+        self.destroy()
 
 
 # ----------------- Pantalla de Registro de Huésped (Clase anterior) -----------------
@@ -694,15 +915,30 @@ class RegisterCustomerWindow(tk.Toplevel):
             entry = ttk.Entry(self.form_frame, width=40)
             entry.grid(row=i, column=1, pady=5, padx=5)
             self.entries[key] = entry
-            
-        # Botón de Registro
-        ttk.Button(main_frame, text="REGISTRAR HUÉSPED", command=self.process_registration, 
-                   style='Access.TButton', width=30).pack(pady=20)
+        
+        # Campos de contraseña
+        pw_row = len(fields)
+        ttk.Label(self.form_frame, text="Contraseña:").grid(row=pw_row, column=0, sticky="w", pady=5, padx=5)
+        self.password_entry = ttk.Entry(self.form_frame, width=40, show="*")
+        self.password_entry.grid(row=pw_row, column=1, pady=5, padx=5)
+
+        ttk.Label(self.form_frame, text="Confirmar Contraseña:").grid(row=pw_row+1, column=0, sticky="w", pady=5, padx=5)
+        self.confirm_password_entry = ttk.Entry(self.form_frame, width=40, show="*")
+        self.confirm_password_entry.grid(row=pw_row+1, column=1, pady=5, padx=5)
+
+        # Botones: Registrar y Regresar (apilados verticalmente)
+        btn_frame = ttk.Frame(main_frame)
+        btn_frame.pack(pady=20, fill='x')
+        ttk.Button(btn_frame, text="REGISTRAR HUÉSPED", command=self.process_registration, 
+                   style='Access.TButton').pack(fill='x', pady=5)
+        ttk.Button(btn_frame, text="REGRESAR", command=self.go_back).pack(fill='x', pady=5)
 
     def process_registration(self):
         """Recoge datos, valida y crea el nuevo objeto Customer."""
         
         data = {k: v.get().strip() for k, v in self.entries.items()}
+        password = self.password_entry.get().strip()
+        confirm_pw = self.confirm_password_entry.get().strip()
         
         # Validación simple de campos obligatorios
         required = ['first_name', 'last_name', 'phone', 'email', 'state', 'curp']
@@ -713,6 +949,14 @@ class RegisterCustomerWindow(tk.Toplevel):
         # Validación de Email simple
         if not re.match(r"[^@]+@[^@]+\.[^@]+", data['email']):
             messagebox.showerror("Error de Formato", "El formato del email no es válido.")
+            return
+        
+        # Validación de contraseña
+        if not password:
+            messagebox.showerror("Contraseña", "Por favor ingrese una contraseña.")
+            return
+        if password != confirm_pw:
+            messagebox.showerror("Contraseña", "Las contraseñas no coinciden.")
             return
             
         # 1. Calcular nuevo ID para cliente basado en los objetos existentes
@@ -731,7 +975,8 @@ class RegisterCustomerWindow(tk.Toplevel):
             phone=data['phone'],
             email=data['email'],
             state=data['state'],
-            curp=data['curp']
+            curp=data['curp'],
+            password=password
         )
         
         # 2. Registrar el cliente
@@ -739,6 +984,14 @@ class RegisterCustomerWindow(tk.Toplevel):
         self.controller.add_new_customer(new_customer)
         
         messagebox.showinfo("Registro Exitoso", f"Huésped {data['first_name']} {data['last_name']} registrado con éxito.")
+        self.destroy()
+
+    def go_back(self):
+        """Cierra la ventana y regresa a la pantalla de bienvenida."""
+        try:
+            self.controller.show_frame("WelcomeScreen")
+        except Exception:
+            pass
         self.destroy()
 
 
@@ -794,13 +1047,36 @@ class RegisterEmployeeWindow(tk.Toplevel):
         # Valor por defecto para status
         self.entries['status'].insert(0, 'Active')
         
-        # Botón de Registro
-        ttk.Button(main_frame, text="REGISTRAR EMPLEADO", command=self.process_registration, 
-                   style='Access.TButton', width=30).pack(pady=20)
+        # Tipo de empleado (Recepcionista, Botones, Servicio)
+        role_row = len(fields) + 0
+        ttk.Label(self.form_frame, text="Tipo de Empleado:").grid(row=role_row, column=0, sticky="w", pady=5, padx=5)
+        self.role_var = tk.StringVar(value="Recepcionista")
+        role_combo = ttk.Combobox(self.form_frame, textvariable=self.role_var,
+                                  values=["Recepcionista", "Botones", "Servicio"], state="readonly", width=37)
+        role_combo.grid(row=role_row, column=1, pady=5, padx=5)
+        
+        # Campos de contraseña
+        pw_row = len(fields)
+        ttk.Label(self.form_frame, text="Contraseña:").grid(row=pw_row, column=0, sticky="w", pady=5, padx=5)
+        self.password_entry = ttk.Entry(self.form_frame, width=40, show="*")
+        self.password_entry.grid(row=pw_row, column=1, pady=5, padx=5)
+
+        ttk.Label(self.form_frame, text="Confirmar Contraseña:").grid(row=pw_row+1, column=0, sticky="w", pady=5, padx=5)
+        self.confirm_password_entry = ttk.Entry(self.form_frame, width=40, show="*")
+        self.confirm_password_entry.grid(row=pw_row+1, column=1, pady=5, padx=5)
+
+        # Botones: Registrar y Regresar (apilados verticalmente)
+        btn_frame = ttk.Frame(main_frame)
+        btn_frame.pack(pady=20, fill='x')
+        ttk.Button(btn_frame, text="REGISTRAR EMPLEADO", command=self.process_registration, 
+                   style='Access.TButton').pack(fill='x', pady=5)
+        ttk.Button(btn_frame, text="REGRESAR", command=self.go_back).pack(fill='x', pady=5)
 
     def process_registration(self):
         """Recoge datos, valida y crea el nuevo objeto Employee."""
         data = {k: v.get().strip() for k, v in self.entries.items()}
+        password = self.password_entry.get().strip()
+        confirm_pw = self.confirm_password_entry.get().strip()
 
         # Validación simple de campos obligatorios
         required = ['first_name', 'last_name', 'phone', 'email', 'status', 'curp']
@@ -813,6 +1089,14 @@ class RegisterEmployeeWindow(tk.Toplevel):
             messagebox.showerror("Error de Formato", "El formato del email no es válido.")
             return
 
+        # Validación de contraseña
+        if not password:
+            messagebox.showerror("Contraseña", "Por favor ingrese una contraseña para el empleado.")
+            return
+        if password != confirm_pw:
+            messagebox.showerror("Contraseña", "Las contraseñas no coinciden.")
+            return
+
         # 1. Calcular nuevo ID para empleado
         try:
             existing_ids = [int(k) for k in self.controller.data['employees'].keys()]
@@ -821,22 +1105,63 @@ class RegisterEmployeeWindow(tk.Toplevel):
             new_id = 1
 
         # 2. Crear objeto Employee
-        new_employee = Employee(
-            new_id,
-            data['first_name'],
-            data['middle_name'],
-            data['last_name'],
-            data['second_last_name'],
-            data['phone'],
-            data['email'],
-            data['status'],
-            data['curp']
-        )
+        # Crear la instancia del tipo adecuado según la selección
+        role = getattr(self, 'role_var', None)
+        selected_role = role.get() if role else 'Servicio'
+
+        if selected_role == 'Recepcionista':
+            new_employee = Receptionist(
+                new_id,
+                data['first_name'],
+                data['middle_name'],
+                data['last_name'],
+                data['second_last_name'],
+                data['phone'],
+                data['email'],
+                data['status'],
+                data['curp'],
+                password
+            )
+        elif selected_role == 'Botones':
+            new_employee = Bellboy(
+                new_id,
+                data['first_name'],
+                data['middle_name'],
+                data['last_name'],
+                data['second_last_name'],
+                data['phone'],
+                data['email'],
+                data['status'],
+                data['curp'],
+                password
+            )
+        else:
+            # Servicio u otros -> Employee genérico
+            new_employee = Employee(
+                new_id,
+                data['first_name'],
+                data['middle_name'],
+                data['last_name'],
+                data['second_last_name'],
+                data['phone'],
+                data['email'],
+                data['status'],
+                data['curp'],
+                password
+            )
 
         # 3. Registrar empleado en el controlador
         self.controller.add_new_employee(new_employee)
 
         messagebox.showinfo("Registro Exitoso", f"Empleado {data['first_name']} {data['last_name']} registrado con éxito.")
+        self.destroy()
+
+    def go_back(self):
+        """Cierra la ventana y regresa a la pantalla de bienvenida."""
+        try:
+            self.controller.show_frame("WelcomeScreen")
+        except Exception:
+            pass
         self.destroy()
 
 # ----------------- Inicio de la Aplicación -----------------

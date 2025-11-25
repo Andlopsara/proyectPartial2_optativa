@@ -1,5 +1,5 @@
 class Employee:
-    def __init__(self, id, firstName, secondName, lastName, secondLastName, phone, email, status, curp):
+    def __init__(self, id, firstName, secondName, lastName, secondLastName, phone, email, status, curp, password=""):
         self.__id = id
         self.__firstName = firstName
         self.__secondName = secondName
@@ -9,6 +9,7 @@ class Employee:
         self.__email = email
         self.__status = status
         self.__curp = curp
+        self.__password = password
 
     # -------- Getters and Setters --------
     def getId(self): return self.__id
@@ -31,6 +32,9 @@ class Employee:
 
     def getEmail(self): return self.__email
     def setEmail(self, email): self.__email = email
+
+    def getPassword(self): return getattr(self, '_Employee__password', '')
+    def setPassword(self, password): self.__password = password
 
     def getStatus(self): return self.__status
     def setStatus(self, status): self.__status = status
