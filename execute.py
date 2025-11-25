@@ -176,7 +176,7 @@ class CreateServiceReservationWindow(tk.Toplevel):
         tk.Toplevel.__init__(self, master)
         self.controller = controller
         self.title("Solicitar Nuevo Servicio")
-        self.geometry("450x450")
+        self.geometry("500x550")
         self.resizable(False, False)
         self.configure(bg=PASTEL_BG)
 
@@ -185,12 +185,26 @@ class CreateServiceReservationWindow(tk.Toplevel):
         
         ttk.Label(main_frame, text="NUEVA RESERVA DE SERVICIO", style='Header.TLabel', foreground=PASTEL_HEADER).pack(pady=10)
         
-        form_frame = ttk.Frame(main_frame)
-        form_frame.pack(pady=15, padx=10)
+        # Canvas con scroll
+        canvas = tk.Canvas(main_frame, bg=PASTEL_BG, highlightthickness=0)
+        canvas.pack(side="left", fill="both", expand=True)
+        
+        scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=canvas.yview)
+        scrollbar.pack(side="right", fill="y")
+        
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        form_frame = ttk.Frame(canvas)
+        canvas.create_window((0, 0), window=form_frame, anchor="nw")
+        
+        form_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
         
         # Customer Email
-        ttk.Label(form_frame, text="Email del Cliente (Ej: andrea@mail.com):").grid(row=0, column=0, sticky="w", pady=5)
-        self.email_entry = ttk.Entry(form_frame, width=30)
+        ttk.Label(form_frame, text="Email del Cliente (Ej: andrea@mail.com):").grid(row=0, column=0, sticky="w", pady=5, padx=5)
+        self.email_entry = ttk.Entry(form_frame, width=40)
         self.email_entry.grid(row=0, column=1, padx=10, pady=5)
         
         # Llenar con el email del usuario logueado si es cliente
@@ -200,27 +214,36 @@ class CreateServiceReservationWindow(tk.Toplevel):
         else:
             self.email_entry.insert(0, "andrea@mail.com") # Dato de demo para empleado/recepcionista
 
+        # Número de Habitación
+        ttk.Label(form_frame, text="Número de Habitación (Opcional):").grid(row=1, column=0, sticky="w", pady=5, padx=5)
+        self.room_number_entry = ttk.Entry(form_frame, width=40)
+        self.room_number_entry.grid(row=1, column=1, padx=10, pady=5)
+        self.room_number_entry.insert(0, "101")
+
         # Service Selection
-        ttk.Label(form_frame, text="Seleccionar Servicio:").grid(row=1, column=0, sticky="w", pady=5)
+        ttk.Label(form_frame, text="Seleccionar Servicio:").grid(row=2, column=0, sticky="w", pady=5, padx=5)
         
         self.services = self.controller.data['services']
         # Combobox Options: 'ID: Tipo (Costo)'
         service_options = [f"{s.getId()}: {s.getType()} (${s.getCost():.2f})" for s in self.services.values()]
         
         self.service_var = tk.StringVar(form_frame)
-        self.service_combo = ttk.Combobox(form_frame, textvariable=self.service_var, values=service_options, state="readonly", width=28)
-        self.service_combo.grid(row=1, column=1, padx=10, pady=5)
+        self.service_combo = ttk.Combobox(form_frame, textvariable=self.service_var, values=service_options, state="readonly", width=37)
+        self.service_combo.grid(row=2, column=1, padx=10, pady=5)
         self.service_combo.set(service_options[0] if service_options else "") # Seleccionar el primero por defecto
 
         # Date/Time
-        ttk.Label(form_frame, text="Fecha/Hora Solicitada (AAAA-MM-DD HH:MM):").grid(row=2, column=0, sticky="w", pady=5)
-        self.datetime_entry = ttk.Entry(form_frame, width=30)
-        self.datetime_entry.grid(row=2, column=1, padx=10, pady=5)
+        ttk.Label(form_frame, text="Fecha/Hora Solicitada (AAAA-MM-DD HH:MM):").grid(row=3, column=0, sticky="w", pady=5, padx=5)
+        self.datetime_entry = ttk.Entry(form_frame, width=40)
+        self.datetime_entry.grid(row=3, column=1, padx=10, pady=5)
         self.datetime_entry.insert(0, str(date.today()) + " 10:00") # Fecha y hora de hoy por defecto
         
-        # Botón de creación
-        ttk.Button(main_frame, text="SOLICITAR SERVICIO", command=self.process_service_reservation, 
-                   style='Access.TButton', width=25).pack(pady=30)
+        # Botones (apilados verticalmente)
+        btn_frame = ttk.Frame(main_frame)
+        btn_frame.pack(pady=20, fill='x')
+        ttk.Button(btn_frame, text="SOLICITAR SERVICIO", command=self.process_service_reservation, 
+                   style='Access.TButton').pack(fill='x', pady=5)
+        ttk.Button(btn_frame, text="REGRESAR", command=self.destroy).pack(fill='x', pady=5)
 
     def validate_datetime(self, dt_str):
         """Valida un formato simple AAAA-MM-DD HH:MM."""
@@ -229,6 +252,7 @@ class CreateServiceReservationWindow(tk.Toplevel):
     def process_service_reservation(self):
         """Recoge datos, valida y ejecuta la lógica de creación de reserva de servicio POO."""
         email = self.email_entry.get().strip()
+        room_number = self.room_number_entry.get().strip()
         service_info = self.service_var.get().strip()
         date_time_str = self.datetime_entry.get().strip()
 
@@ -272,14 +296,118 @@ class CreateServiceReservationWindow(tk.Toplevel):
         # 4. Ejecutar la lógica POO y actualizar la base de datos
         if reservation.createReservation():
             self.controller.add_new_service_reservation(reservation) # Actualiza el estado global
-            messagebox.showinfo("Reserva de Servicio Exitosa", 
-                                f"Servicio '{service_obj.getType()}' solicitado con éxito para {customer_obj.getName()}. Reserva #{new_res_id}.")
+            
+            # Abrir ventana de pago para el servicio
+            PaymentServiceWindow(self.master, self.controller, reservation, service_obj.getCost(), customer_obj, room_number)
             self.destroy() # Cierra la ventana modal
         else:
             messagebox.showerror("Reserva Fallida", "No se pudo crear la reserva de servicio.")
 
 
 # Declaraciones anticipadas de clases (forward references)
+class PaymentServiceWindow(tk.Toplevel):
+    """Ventana modal para procesar el pago de un servicio."""
+    def __init__(self, master, controller, reservation, service_cost, customer, room_number):
+        tk.Toplevel.__init__(self, master)
+        self.controller = controller
+        self.reservation = reservation
+        self.service_cost = service_cost
+        self.customer = customer
+        self.room_number = room_number
+        
+        self.title("Procesar Pago de Servicio")
+        self.geometry("500x500")
+        self.resizable(False, False)
+        self.configure(bg=PASTEL_BG)
+
+        main_frame = ttk.Frame(self, padding="15")
+        main_frame.pack(fill="both", expand=True)
+        
+        ttk.Label(main_frame, text="PAGO DE SERVICIO", style='Header.TLabel', foreground=PASTEL_HEADER).pack(pady=10)
+        
+        # Canvas con scroll
+        canvas = tk.Canvas(main_frame, bg=PASTEL_BG, highlightthickness=0)
+        canvas.pack(side="left", fill="both", expand=True)
+        
+        scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=canvas.yview)
+        scrollbar.pack(side="right", fill="y")
+        
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        form_frame = ttk.Frame(canvas)
+        canvas.create_window((0, 0), window=form_frame, anchor="nw")
+        
+        form_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        # Información del servicio
+        ttk.Label(form_frame, text=f"Reserva de Servicio #{reservation.getId()}:", font=('Arial', 11, 'bold')).pack(anchor="w", pady=5, padx=10)
+        ttk.Label(form_frame, text=f"Cliente: {customer.getName()}").pack(anchor="w", padx=10)
+        ttk.Label(form_frame, text=f"Habitación: {room_number}").pack(anchor="w", padx=10)
+        ttk.Label(form_frame, text=f"Servicio: {reservation._ServiceReservation__service.getType()}").pack(anchor="w", padx=10)
+        
+        # Separador
+        ttk.Separator(form_frame, orient="horizontal").pack(fill="x", pady=10, padx=10)
+        
+        # Monto total
+        total_frame = ttk.Frame(form_frame)
+        total_frame.pack(anchor="w", pady=10, padx=10)
+        ttk.Label(total_frame, text="TOTAL A PAGAR:", font=('Arial', 12, 'bold')).pack(anchor="w")
+        ttk.Label(total_frame, text=f"${service_cost:.2f}", font=('Arial', 18, 'bold'), foreground=PASTEL_HEADER).pack(anchor="e", padx=20)
+        
+        # Método de pago
+        ttk.Label(form_frame, text="Método de Pago:").pack(anchor="w", pady=(15, 5), padx=10)
+        self.payment_method_var = tk.StringVar(value="Tarjeta de Crédito")
+        payment_methods = ["Tarjeta de Crédito", "Tarjeta de Débito", "Efectivo", "Transferencia Bancaria"]
+        
+        for method in payment_methods:
+            ttk.Radiobutton(form_frame, text=method, variable=self.payment_method_var, value=method).pack(anchor="w", padx=10)
+        
+        # Campo de referencia (opcional)
+        ttk.Label(form_frame, text="Referencia/Número de Transacción (Opcional):").pack(anchor="w", pady=(15, 5), padx=10)
+        self.reference_entry = ttk.Entry(form_frame, width=50)
+        self.reference_entry.pack(anchor="w", padx=10)
+        
+        # Botones (apilados debajo del formulario)
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(pady=20, fill='x')
+
+        ttk.Button(button_frame, text="PAGAR", command=self.process_payment, 
+               style='Access.TButton').pack(fill='x', pady=5)
+        ttk.Button(button_frame, text="CANCELAR", command=self.destroy).pack(fill='x', pady=5)
+
+    def process_payment(self):
+        """Procesa el pago del servicio y lo registra en la base de datos."""
+        payment_method = self.payment_method_var.get()
+        
+        # Crear objeto Payment
+        from payment import Payment as PaymentClass
+        
+        payment = PaymentClass(
+            self.controller.next_payment_id,
+            self.service_cost,
+            payment_method,
+            self.reservation
+        )
+        
+        # Procesar el pago
+        payment.processPayment()
+        
+        # Agregar a la base de datos
+        self.controller.add_new_payment(payment)
+        
+        # Mostrar confirmación
+        messagebox.showinfo("Pago de Servicio Exitoso", 
+                           f"Pago de ${self.service_cost:.2f} procesado correctamente.\n"
+                           f"Método: {payment_method}\n"
+                           f"Servicio: {self.reservation._ServiceReservation__service.getType()}\n"
+                           f"Reserva #{self.reservation.getId()} confirmada.")
+        
+        self.destroy()
+
+
 class RegisterCustomerWindow(tk.Toplevel):
     pass
 
@@ -666,9 +794,21 @@ class CreateReservationWindow(tk.Toplevel):
         self.people_spinbox.grid(row=5, column=1, padx=5, pady=5)
         self.people_spinbox.set(2)
         
-        # Botón de confirmación
-        ttk.Button(main_frame, text="CONFIRMAR RESERVA", command=self.process_reservation, 
-                   style='Access.TButton', width=30).pack(pady=20)
+        # Agregar Servicio Adicional
+        ttk.Label(form_frame, text="Agregar Servicio Adicional:").grid(row=6, column=0, sticky="w", pady=5, padx=5)
+        self.services_dict = self.controller.data['services']
+        service_options = [f"{s.getId()}: {s.getType()} (${s.getCost():.2f})" for s in self.services_dict.values()]
+        service_options.insert(0, "Ninguno")
+        self.service_var = tk.StringVar(value="Ninguno")
+        service_combo = ttk.Combobox(form_frame, textvariable=self.service_var, values=service_options, state="readonly", width=37)
+        service_combo.grid(row=6, column=1, padx=5, pady=5)
+        
+        # Botones (apilados verticalmente)
+        btn_frame = ttk.Frame(main_frame)
+        btn_frame.pack(pady=20, fill='x')
+        ttk.Button(btn_frame, text="CONFIRMAR RESERVA", command=self.process_reservation, 
+                   style='Access.TButton').pack(fill='x', pady=5)
+        ttk.Button(btn_frame, text="REGRESAR", command=self.destroy).pack(fill='x', pady=5)
         
         # Mostrar habitaciones disponibles inicialmente
         self.update_available_rooms()
@@ -770,8 +910,20 @@ class CreateReservationWindow(tk.Toplevel):
             num_nights = (check_out - check_in).days
             total_cost = room_obj.getCost() * num_nights
             
+            # Verificar si hay servicio adicional
+            service_selection = self.service_var.get()
+            additional_service = None
+            if service_selection != "Ninguno":
+                try:
+                    service_id = int(service_selection.split(':')[0])
+                    additional_service = self.services_dict.get(service_id)
+                    if additional_service:
+                        total_cost += additional_service.getCost()
+                except:
+                    pass
+            
             # Abrir ventana de pago
-            PaymentWindow(self.master, self.controller, reservation, total_cost, customer_obj)
+            PaymentWindow(self.master, self.controller, reservation, total_cost, customer_obj, additional_service)
             self.destroy()
         else:
             messagebox.showerror("Reserva Fallida", 
@@ -781,15 +933,16 @@ class CreateReservationWindow(tk.Toplevel):
 # ----------------- Ventana de Pago (NUEVA) -----------------
 class PaymentWindow(tk.Toplevel):
     """Ventana modal para procesar el pago de una reserva."""
-    def __init__(self, master, controller, reservation, total_cost, customer):
+    def __init__(self, master, controller, reservation, total_cost, customer, additional_service=None):
         tk.Toplevel.__init__(self, master)
         self.controller = controller
         self.reservation = reservation
         self.total_cost = total_cost
         self.customer = customer
+        self.additional_service = additional_service
         
         self.title("Procesar Pago")
-        self.geometry("500x450")
+        self.geometry("500x500")
         self.resizable(False, False)
         self.configure(bg=PASTEL_BG)
 
@@ -798,36 +951,54 @@ class PaymentWindow(tk.Toplevel):
         
         ttk.Label(main_frame, text="PROCESAMIENTO DE PAGO", style='Header.TLabel', foreground=PASTEL_HEADER).pack(pady=10)
         
-        form_frame = ttk.Frame(main_frame)
-        form_frame.pack(pady=15, padx=10, fill="both", expand=True)
+        # Canvas con scroll para el contenido de pago
+        canvas = tk.Canvas(main_frame, bg=PASTEL_BG, highlightthickness=0)
+        canvas.pack(side="left", fill="both", expand=True)
+        
+        scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=canvas.yview)
+        scrollbar.pack(side="right", fill="y")
+        
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        form_frame = ttk.Frame(canvas)
+        canvas.create_window((0, 0), window=form_frame, anchor="nw")
+        
+        form_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
         
         # Información de la reserva
-        ttk.Label(form_frame, text=f"Reserva #{reservation.getId()}:", font=('Arial', 11, 'bold')).pack(anchor="w", pady=5)
-        ttk.Label(form_frame, text=f"Cliente: {customer.getName()}").pack(anchor="w")
-        ttk.Label(form_frame, text=f"Habitación: {reservation._Reservation__room.getId()}").pack(anchor="w")
-        ttk.Label(form_frame, text=f"Precio por noche: ${reservation._Reservation__room.getCost():.2f}").pack(anchor="w")
+        ttk.Label(form_frame, text=f"Reserva #{reservation.getId()}:", font=('Arial', 11, 'bold')).pack(anchor="w", pady=5, padx=10)
+        ttk.Label(form_frame, text=f"Cliente: {customer.getName()}").pack(anchor="w", padx=10)
+        ttk.Label(form_frame, text=f"Habitación: {reservation._Reservation__room.getId()}").pack(anchor="w", padx=10)
+        ttk.Label(form_frame, text=f"Precio por noche: ${reservation._Reservation__room.getCost():.2f}").pack(anchor="w", padx=10)
+        
+        # Mostrar servicio adicional si existe
+        if additional_service:
+            ttk.Label(form_frame, text=f"Servicio Adicional: {additional_service.getType()} (${additional_service.getCost():.2f})").pack(anchor="w", padx=10)
         
         # Separador
-        ttk.Separator(form_frame, orient="horizontal").pack(fill="x", pady=10)
+        ttk.Separator(form_frame, orient="horizontal").pack(fill="x", pady=10, padx=10)
         
         # Monto total
         total_frame = ttk.Frame(form_frame)
-        total_frame.pack(anchor="w", pady=10)
+        total_frame.pack(anchor="w", pady=10, padx=10)
         ttk.Label(total_frame, text="TOTAL A PAGAR:", font=('Arial', 12, 'bold')).pack(anchor="w")
         ttk.Label(total_frame, text=f"${total_cost:.2f}", font=('Arial', 18, 'bold'), foreground=PASTEL_HEADER).pack(anchor="e", padx=20)
         
         # Método de pago
-        ttk.Label(form_frame, text="Método de Pago:").pack(anchor="w", pady=(15, 5))
+        ttk.Label(form_frame, text="Método de Pago:").pack(anchor="w", pady=(15, 5), padx=10)
         self.payment_method_var = tk.StringVar(value="Tarjeta de Crédito")
         payment_methods = ["Tarjeta de Crédito", "Tarjeta de Débito", "Efectivo", "Transferencia Bancaria"]
         
         for method in payment_methods:
-            ttk.Radiobutton(form_frame, text=method, variable=self.payment_method_var, value=method).pack(anchor="w")
+            ttk.Radiobutton(form_frame, text=method, variable=self.payment_method_var, value=method).pack(anchor="w", padx=10)
         
         # Campo de referencia (opcional)
-        ttk.Label(form_frame, text="Referencia/Número de Transacción (Opcional):").pack(anchor="w", pady=(15, 5))
+        ttk.Label(form_frame, text="Referencia/Número de Transacción (Opcional):").pack(anchor="w", pady=(15, 5), padx=10)
         self.reference_entry = ttk.Entry(form_frame, width=50)
-        self.reference_entry.pack(anchor="w")
+        self.reference_entry.pack(anchor="w", padx=10)
         
         # Botones (apilados debajo del formulario)
         button_frame = ttk.Frame(main_frame)
@@ -1048,7 +1219,7 @@ class RegisterEmployeeWindow(tk.Toplevel):
         self.entries['status'].insert(0, 'Active')
         
         # Tipo de empleado (Recepcionista, Botones, Servicio)
-        role_row = len(fields) + 0
+        role_row = len(fields)
         ttk.Label(self.form_frame, text="Tipo de Empleado:").grid(row=role_row, column=0, sticky="w", pady=5, padx=5)
         self.role_var = tk.StringVar(value="Recepcionista")
         role_combo = ttk.Combobox(self.form_frame, textvariable=self.role_var,
@@ -1056,7 +1227,7 @@ class RegisterEmployeeWindow(tk.Toplevel):
         role_combo.grid(row=role_row, column=1, pady=5, padx=5)
         
         # Campos de contraseña
-        pw_row = len(fields)
+        pw_row = len(fields) + 1
         ttk.Label(self.form_frame, text="Contraseña:").grid(row=pw_row, column=0, sticky="w", pady=5, padx=5)
         self.password_entry = ttk.Entry(self.form_frame, width=40, show="*")
         self.password_entry.grid(row=pw_row, column=1, pady=5, padx=5)
