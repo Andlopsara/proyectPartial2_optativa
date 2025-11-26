@@ -510,14 +510,12 @@ class MainMenuScreen(ttk.Frame):
         # Fila 2
         self.create_dashboard_card(self.grid_buttons_frame, "🍽️", "Ver Servicios Activos", self.view_service_reservation, 1, 0)
         self.create_dashboard_card(self.grid_buttons_frame, "ℹ️", "Info Hab. Demo", self.view_room_info, 1, 1)
-        
-        # Opciones extra para pruebas
-        self.create_dashboard_card(self.grid_buttons_frame, "🧪", "Test Pago (Última)", self.open_last_payment, 1, 2)
 
     # --- Wrappers de Funcionalidad ---
     def open_create_reservation(self): CreateReservationWindow(self.controller.master, self.controller)
     def open_create_service_reservation(self): CreateServiceReservationWindow(self.controller.master, self.controller)
-    
+
+
     def view_room_reservation(self):
         # Abrir ventana estilizada de visualización de reservas
         ViewReservationsWindow(self.controller.master, self.controller)
@@ -530,21 +528,14 @@ class MainMenuScreen(ttk.Frame):
         # Abrir ventana con información de habitaciones
         RoomInfoWindow(self.controller.master, self.controller)
 
-    def open_last_payment(self):
-        if not self.controller.data['reservations']: return
-        last_id = max(self.controller.data['reservations'].keys())
-        reservation = self.controller.data['reservations'][last_id]
-        PaymentWindow(self.controller.master, self.controller, reservation, reservation.getRoom().getCost(), reservation.getCustomer())
-
-
-# ----------------- Ventanas de Registro y Pago (Estilizadas) -----------------
-# Versiones simplificadas con el nuevo estilo visual
 
 class CreateReservationWindow(tk.Toplevel):
+    """Ventana para crear una nueva reserva de habitación."""
     def __init__(self, master, controller):
         tk.Toplevel.__init__(self, master)
         self.controller = controller
-        self.title("Reservar Habitación")
+
+        self.title("Reservar Habitación") # <-- El código huérfano empieza aquí
         center_window(self, 600, 700)
         self.configure(bg=COLOR_BG)
         
@@ -660,6 +651,9 @@ class CreateReservationWindow(tk.Toplevel):
             if not new_res_id:
                 messagebox.showerror("Error de Base de Datos", "No se pudo registrar la reserva. Intente de nuevo.")
                 return
+            
+            # SOLUCIÓN: Añadir la nueva reserva a los datos en memoria de la app.
+            self.controller.data['reservations'][new_res_id] = res
 
             PaymentWindow(self.master, self.controller, res, total_cost, cust, additional_service, room_subtotal, service_subtotal)
             self.destroy()
@@ -814,6 +808,8 @@ class ViewReservationsWindow(tk.Toplevel):
                 messagebox.showinfo("Éxito", f"La reserva #{reservation_id} ha sido eliminada.")
                 # Eliminar de la vista
                 self.tree.delete(selected_item)
+                # SOLUCIÓN: Eliminar también de los datos en memoria.
+                del self.controller.data['reservations'][reservation_id]
                 # Opcional: recargar todo
                 # self.load_reservations() 
             else:
