@@ -511,7 +511,7 @@ class MainMenuScreen(ttk.Frame):
         self.create_dashboard_card(self.grid_buttons_frame, "🍽️", "Ver Servicios Activos", self.view_service_reservation, 1, 0)
         self.create_dashboard_card(self.grid_buttons_frame, "ℹ️", "Info Hab. Demo", self.view_room_info, 1, 1)
 
-    # --- Wrappers de Funcionalidad ---
+    # --- Wrappers de Funcionalidad para abrir ventanas ---
     def open_create_reservation(self): CreateReservationWindow(self.controller.master, self.controller)
     def open_create_service_reservation(self): CreateServiceReservationWindow(self.controller.master, self.controller)
 

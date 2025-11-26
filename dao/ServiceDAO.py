@@ -23,22 +23,21 @@ class ServiceDAO:
             svc.getType(), svc.getCost(), svc.getDescription()
         )
         
+        conn = None
         try:
             conn = get_conn()
-            cursor = conn.cursor()
-            cursor.execute(query, values)
-            conn.commit()
-            svc_id = cursor.lastrowid
-            svc.setId(svc_id)
-            return svc_id
+            with conn.cursor() as cursor:
+                cursor.execute(query, values)
+                conn.commit()
+                svc_id = cursor.lastrowid
+                svc.setId(svc_id)
+                return svc_id
         except mysql.connector.Error as err:
             print(f"Error CREATE Service: {err}")
             if conn:
                 conn.rollback()
             return None
         finally:
-            if cursor:
-                cursor.close()
             if conn:
                 close_conn(conn)
 

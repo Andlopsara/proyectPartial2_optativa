@@ -1,13 +1,10 @@
-# dao/customer_dao.py
 
 import mysql.connector
-from db_connection import get_conn, close_conn # type: ignore
+from db_connection import get_conn, close_conn
 from customer import Customer
 from typing import Optional
 
 class CustomerDAO:
-    """DAO para la entidad CUSTOMERS."""
-
     def create(self, cust: Customer) -> Optional[int]:
         """
         Inserta un nuevo cliente en la base de datos.
