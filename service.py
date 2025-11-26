@@ -5,7 +5,6 @@ class Service:
         self.__cost = cost
         self.__description = description
 
-    # -------- Getters and Setters --------
     def getId(self): return self.__id
     def setId(self, id): self.__id = id
 
@@ -18,7 +17,6 @@ class Service:
     def getDescription(self): return self.__description
     def setDescription(self, description): self.__description = description
 
-    # -------- Métodos --------
     def addService(self):
         print(f"Service '{self.__type}' added. Cost: ${self.__cost}")
 

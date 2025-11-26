@@ -11,7 +11,6 @@ class Employee:
         self.__curp = curp
         self.__password = password
 
-    # -------- Getters and Setters --------
     def getId(self): return self.__id
     def setId(self, id): self.__id = id
 
@@ -42,7 +41,6 @@ class Employee:
     def getCurp(self): return self.__curp
     def setCurp(self, curp): self.__curp = curp
 
-    # -------- Métodos --------
     def createReservation(self, reservation):
         reservation.createReservation()
         print(f"Employee {self.__firstName} created a reservation for room {reservation.getRoom().getId()}.")
@@ -58,4 +56,3 @@ class Employee:
     def registerService(self, service):
         service.addService()
         print(f"Employee {self.__firstName} registered service {service.getType()}.")
-

@@ -4,7 +4,6 @@ from datetime import date
 import re 
 import uuid 
 
-# Importar clases de POO (Asegúrate de que los archivos estén en la misma carpeta)
 from customer import Customer
 from service import Service 
 from reservationService import ServiceReservation 
@@ -15,7 +14,6 @@ from receptionist import Receptionist
 from bellboy import Bellboy
 from payment import Payment
 
-# Importar los DAOs que vamos a usar
 from dao.employee_dao import EmployeeDAO
 from dao.ServiceDAO import ServiceDAO
 from dao.customer_dao import CustomerDAO
@@ -23,30 +21,23 @@ from dao.room_dao import RoomDAO
 from dao.payment_dao import PaymentDAO
 from dao.reservation_dao import ReservationDAO
 
-# ----------------- PALETA DE COLORES Y ESTILOS (TEMA LUJO) -----------------
-# Colores
-COLOR_PRIMARY = '#1A237E'      # Azul Marino Profundo (Barra lateral/Encabezados)
-COLOR_SECONDARY = '#283593'    # Azul un poco más claro (Al pasar el mouse)
-COLOR_ACCENT = '#D4AF37'       # Dorado (Botones de acción principal)
-COLOR_BG = '#F5F6FA'           # Gris muy claro (Fondo de la app)
-COLOR_WHITE = '#FFFFFF'        # Blanco (Tarjetas)
-COLOR_TEXT = '#2C3E50'         # Gris Oscuro (Texto principal)
-COLOR_TEXT_LIGHT = '#7F8C8D'   # Gris Suave (Subtítulos)
-COLOR_DANGER = '#C0392B'       # Rojo elegante (Errores/Cancelar)
+COLOR_PRIMARY = '#1A237E'
+COLOR_SECONDARY = '#283593'
+COLOR_ACCENT = '#D4AF37'
+COLOR_BG = '#F5F6FA'
+COLOR_WHITE = '#FFFFFF'
+COLOR_TEXT = '#2C3E50'
+COLOR_TEXT_LIGHT = '#7F8C8D'
+COLOR_DANGER = '#C0392B'
 
-# Fuentes
 FONT_HEADER = ('Segoe UI', 20, 'bold')
 FONT_SUBHEADER = ('Segoe UI', 14, 'bold')
 FONT_BODY = ('Segoe UI', 10)
 FONT_BODY_BOLD = ('Segoe UI', 10, 'bold')
 FONT_BUTTON = ('Segoe UI', 10, 'bold')
 
-# ----------------- Funciones de Inicialización de Datos -----------------
-# Lógica idéntica a la original, sin cambios funcionales
+#inicializar datos desde la base de datos
 def init_data_from_db():
-    """
-    Carga los datos iniciales desde la base de datos usando los DAOs.
-    """
     print("--- Cargando datos iniciales desde la Base de Datos ---")
     customer_dao = CustomerDAO()
     employee_dao = EmployeeDAO()
@@ -54,29 +45,24 @@ def init_data_from_db():
     room_dao = RoomDAO()
     reservation_dao = ReservationDAO()
 
-    # Cargar todos los clientes, empleados y servicios
     all_customers = customer_dao.get_all()
     all_employees = employee_dao.get_all()
     all_services = service_dao.get_all()
     all_rooms = room_dao.get_all()
     all_reservations = reservation_dao.get_all()
 
-    # TODO: Cargar Habitaciones, Reservas, etc., cuando sus DAOs existan.
-    # Por ahora, los dejamos como diccionarios vacíos.
-    service_reservations = {} # Reemplazar con ServiceReservationDAO().get_all()
+    service_reservations = {}
 
     return {
         'customers': {c.getEmail(): c for c in all_customers}, 
         'employees': {e.getEmail(): e for e in all_employees}, 
-        'rooms': {r.getId(): r for r in all_rooms}, # type: ignore
+        'rooms': {r.getId(): r for r in all_rooms},
         'reservations': {r.getId(): r for r in all_reservations},
         'service_reservations': service_reservations,
         'services': {s.getId(): s for s in all_services}
     }
 
-# Función para centrar la ventana
 def center_window(window, width, height):
-    """Centers the window on the screen."""
     screen_width = window.winfo_screenwidth()
     screen_height = window.winfo_screenheight()
     x = int((screen_width/2) - (width/2))
@@ -84,9 +70,7 @@ def center_window(window, width, height):
     window.geometry(f"{width}x{height}+{x}+{y}")
 
 class ModernButton(tk.Button):
-    """Custom flat and modern button."""
     def __init__(self, parent, text, command=None, **kwargs):
-        # Extract button_type from kwargs, default to "primary"
         button_type = kwargs.pop('type', kwargs.pop('button_type', 'primary'))
         
         background = COLOR_PRIMARY if button_type == "primary" else (COLOR_ACCENT if button_type == "accent" else COLOR_WHITE)
@@ -98,20 +82,16 @@ class ModernButton(tk.Button):
                          activebackground=COLOR_SECONDARY, activeforeground=COLOR_WHITE,
                          bd=0, padx=20, pady=10, cursor="hand2", **kwargs)
 
-# ----------------- Clase Controladora de la Aplicación -----------------
-
 class HotelGUI:
     def __init__(self, master):
         self.master = master
-        master.title("🏨 Le Villa Hotel Management")
+        master.title("Le Villa Hotel Management")
         master.configure(bg=COLOR_BG)
         center_window(master, 900, 600)
         
-        # Configuración de estilos TTK global
         self.style = ttk.Style()
-        self.style.theme_use('clam') # 'clam' permite más personalización de colores que 'vista' o 'default'
+        self.style.theme_use('clam')
         
-        # Configurar colores de Frames y Labels
         self.style.configure('TFrame', background=COLOR_BG)
         self.style.configure('Card.TFrame', background=COLOR_WHITE, relief="groove", borderwidth=1)
         
@@ -120,7 +100,6 @@ class HotelGUI:
         self.style.configure('Header.TLabel', font=FONT_HEADER, foreground=COLOR_PRIMARY, background=COLOR_BG)
         self.style.configure('Title.TLabel', font=FONT_SUBHEADER, foreground=COLOR_PRIMARY, background=COLOR_WHITE)
         
-        # Configurar Entradas
         self.style.configure('TEntry', padding=5, relief="flat", borderwidth=1)
         self.style.map('TEntry', bordercolor=[('focus', COLOR_PRIMARY)])
 
@@ -136,14 +115,12 @@ class HotelGUI:
         
         self.frames = {}
 
-        # --- Instancias de DAO para la aplicación ---
         self.employee_dao = EmployeeDAO()
         self.service_dao = ServiceDAO()
         self.customer_dao = CustomerDAO()
         self.room_dao = RoomDAO()
         self.payment_dao = PaymentDAO()
         self.reservation_dao = ReservationDAO()
-        # Aquí instanciarías otros DAOs como CustomerDAO, RoomDAO, etc.
 
         for F in (WelcomeScreen, LoginFormScreen, LoginSuccessScreen, MainMenuScreen):
             page_name = F.__name__
@@ -163,7 +140,6 @@ class HotelGUI:
             
         frame.tkraise()
         
-    # Métodos de lógica (add_new...) se mantienen idénticos para no romper funcionalidad
     def add_new_reservation(self, new_reservation):
         res_id = self.next_reservation_id
         self.data['reservations'][res_id] = new_reservation
@@ -191,8 +167,6 @@ class HotelGUI:
         self.next_payment_id += 1
         return payment_obj
 
-# ----------------- Clases de Ventanas Modales (Mejoradas) -----------------
-
 class CreateServiceReservationWindow(tk.Toplevel):
     def __init__(self, master, controller):
         tk.Toplevel.__init__(self, master)
@@ -201,13 +175,11 @@ class CreateServiceReservationWindow(tk.Toplevel):
         center_window(self, 500, 600)
         self.configure(bg=COLOR_BG)
 
-        # Contenedor principal estilo Tarjeta
         card = ttk.Frame(self, style='Card.TFrame', padding=20)
         card.pack(fill="both", expand=True, padx=20, pady=20)
 
         ttk.Label(card, text="🛎️ Solicitar Servicio", style='Title.TLabel').pack(pady=(0, 20))
         
-        # Formulario
         form_frame = ttk.Frame(card, style='Card.TFrame')
         form_frame.pack(fill='both', expand=True)
 
@@ -221,7 +193,7 @@ class CreateServiceReservationWindow(tk.Toplevel):
         else:
             self.email_entry.insert(0, "andrea@mail.com")
 
-        ttk.Label(form_frame, text="Habitación (Opcional)", style='Card.TLabel', font=FONT_BODY_BOLD).pack(anchor='w')
+        ttk.Label(form_frame, text="Habitacion (Opcional)", style='Card.TLabel', font=FONT_BODY_BOLD).pack(anchor='w')
         self.room_number_entry = ttk.Entry(form_frame, width=40)
         self.room_number_entry.pack(fill='x', pady=(5, 15))
         self.room_number_entry.insert(0, "101")
@@ -235,12 +207,11 @@ class CreateServiceReservationWindow(tk.Toplevel):
         self.service_combo.pack(fill='x', pady=(5, 15))
         if service_options: self.service_combo.set(service_options[0])
 
-        ttk.Label(form_frame, text="Fecha/Hora (AAAA-MM-DD HH:MM)", style='Card.TLabel', font=FONT_BODY_BOLD).pack(anchor='w')
+        ttk.Label(form_frame, text="Fecha/Hora", style='Card.TLabel', font=FONT_BODY_BOLD).pack(anchor='w')
         self.datetime_entry = ttk.Entry(form_frame, width=40)
         self.datetime_entry.pack(fill='x', pady=(5, 20))
         self.datetime_entry.insert(0, str(date.today()) + " 10:00")
         
-        # Botones
         ModernButton(card, text="CONFIRMAR SOLICITUD", type="accent", command=self.process_service_reservation).pack(fill='x', pady=5)
         ModernButton(card, text="CANCELAR", type="secondary", command=self.destroy).pack(fill='x', pady=5)
 
@@ -258,7 +229,7 @@ class CreateServiceReservationWindow(tk.Toplevel):
             return
         
         if not self.validate_datetime(date_time_str):
-            messagebox.showerror("Error", "Formato de fecha inválido.")
+            messagebox.showerror("Error", "Formato de fecha invalido.")
             return
 
         customer_obj = self.controller.data['customers'].get(email)
@@ -297,31 +268,27 @@ class PaymentServiceWindow(tk.Toplevel):
         card = ttk.Frame(self, style='Card.TFrame', padding=25)
         card.pack(fill="both", expand=True, padx=20, pady=20)
         
-        ttk.Label(card, text="💳 Detalles del Pago", style='Title.TLabel').pack(pady=(0, 20))
+        ttk.Label(card, text="Detalles del Pago", style='Title.TLabel').pack(pady=(0, 20))
         
         info_frame = ttk.Frame(card, style='Card.TFrame')
         info_frame.pack(fill='x', pady=10)
         
-        # Resumen
         ttk.Label(info_frame, text=f"Servicio: {reservation._ServiceReservation__service.getType()}", style='Card.TLabel').pack(anchor='w')
         ttk.Label(info_frame, text=f"Cliente: {customer.getName()}", style='Card.TLabel').pack(anchor='w')
         
         ttk.Separator(card, orient='horizontal').pack(fill='x', pady=15)
         
-        # Total
         ttk.Label(card, text="TOTAL A PAGAR", style='Card.TLabel', font=('Segoe UI', 10)).pack()
         ttk.Label(card, text=f"${service_cost:.2f}", style='Card.TLabel', font=('Segoe UI', 24, 'bold'), foreground=COLOR_PRIMARY).pack(pady=5)
         
-        # Método
-        ttk.Label(card, text="Método de Pago:", style='Card.TLabel', font=FONT_BODY_BOLD).pack(anchor='w', pady=(15, 5))
-        self.payment_method_var = tk.StringVar(value="Tarjeta de Crédito")
+        ttk.Label(card, text="Metodo de Pago:", style='Card.TLabel', font=FONT_BODY_BOLD).pack(anchor='w', pady=(15, 5))
+        self.payment_method_var = tk.StringVar(value="Tarjeta de Credito")
         
-        # Estilo para radio buttons
         s = ttk.Style()
         s.configure('TRadiobutton', background=COLOR_WHITE, font=FONT_BODY)
         
-        ttk.Radiobutton(card, text="💳 Tarjeta de Crédito", variable=self.payment_method_var, value="Tarjeta de Crédito").pack(anchor='w')
-        ttk.Radiobutton(card, text="💵 Efectivo", variable=self.payment_method_var, value="Efectivo").pack(anchor='w')
+        ttk.Radiobutton(card, text="Tarjeta de Credito", variable=self.payment_method_var, value="Tarjeta de Credito").pack(anchor='w')
+        ttk.Radiobutton(card, text="Efectivo", variable=self.payment_method_var, value="Efectivo").pack(anchor='w')
         
         ModernButton(card, text="PAGAR AHORA", type="accent", command=self.process_payment).pack(fill='x', pady=(30, 5))
         ModernButton(card, text="CANCELAR", type="secondary", command=self.destroy).pack(fill='x', pady=5)
@@ -334,7 +301,6 @@ class PaymentServiceWindow(tk.Toplevel):
             self.reservation
         )
         payment.processPayment()
-        # Guardar en la base de datos
         new_payment_id = self.controller.payment_dao.create(payment)
         if new_payment_id:
             messagebox.showinfo("Pago Exitoso", f"El pago #{new_payment_id} ha sido procesado y guardado.")
@@ -342,14 +308,11 @@ class PaymentServiceWindow(tk.Toplevel):
             messagebox.showerror("Error de Base de Datos", "El pago fue procesado pero no se pudo guardar en la base de datos.")
         self.destroy()
 
-# ----------------- Pantallas Principales -----------------
-
 class WelcomeScreen(ttk.Frame):
     def __init__(self, parent, controller):
         ttk.Frame.__init__(self, parent)
         self.controller = controller
         
-        # Fondo decorativo lateral o superior (simulado con Frames)
         header = tk.Frame(self, bg=COLOR_PRIMARY, height=150)
         header.pack(fill='x')
         
@@ -359,33 +322,30 @@ class WelcomeScreen(ttk.Frame):
         subtitle = tk.Label(header, text="HOTEL & SPA", font=('Segoe UI', 12, 'bold'), bg=COLOR_PRIMARY, fg=COLOR_WHITE)
         subtitle.place(relx=0.5, rely=0.75, anchor='center')
         
-        # Contenido
         content = tk.Frame(self, bg=COLOR_BG)
         content.pack(fill='both', expand=True, padx=50, pady=30)
         
-        tk.Label(content, text="Seleccione su perfil de acceso", font=FONT_SUBHEADER, bg=COLOR_BG, fg=COLOR_TEXT).pack(pady=20)
+        tk.Label(content, text="Seleccione su perfil para acceder", font=FONT_SUBHEADER, bg=COLOR_BG, fg=COLOR_TEXT).pack(pady=20)
         
         btn_container = tk.Frame(content, bg=COLOR_BG)
         btn_container.pack()
         
-        # Botones Grandes
-        ModernButton(btn_container, text="👤  ACCESO HUÉSPED", type="primary", 
+        ModernButton(btn_container, text="ACCESO HUESPED", type="primary", 
                      command=lambda: controller.show_frame("LoginFormScreen", login_type="Customer")).grid(row=0, column=0, padx=10, pady=10)
         
-        ModernButton(btn_container, text="👔  ACCESO EMPLEADO", type="primary",
+        ModernButton(btn_container, text="ACCESO EMPLEADO", type="primary",
                      command=lambda: controller.show_frame("LoginFormScreen", login_type="Employee")).grid(row=0, column=1, padx=10, pady=10)
         
-        # Separador
         tk.Frame(content, height=1, bg="#DDDDDD", width=300).pack(pady=20)
         
         reg_frame = tk.Frame(content, bg=COLOR_BG)
         reg_frame.pack()
         
-        tk.Button(reg_frame, text="Crear cuenta Huésped", font=('Segoe UI', 9, 'underline'), 
+        tk.Button(reg_frame, text="Crear cuenta Huesped", font=('Segoe UI', 9, 'underline'), 
                   bg=COLOR_BG, fg=COLOR_TEXT, bd=0, cursor="hand2",
                   command=lambda: RegisterCustomerWindow(controller.master, controller)).pack(side="left", padx=20)
                   
-        tk.Button(reg_frame, text="Registrar Empleado", font=('Segoe UI', 9, 'underline'),
+        tk.Button(reg_frame, text="Crear cuenta Empleado", font=('Segoe UI', 9, 'underline'),
                   bg=COLOR_BG, fg=COLOR_TEXT, bd=0, cursor="hand2",
                   command=lambda: RegisterEmployeeWindow(controller.master, controller)).pack(side="left", padx=20)
 
@@ -395,14 +355,13 @@ class LoginFormScreen(ttk.Frame):
         ttk.Frame.__init__(self, parent)
         self.controller = controller
         
-        # Simplified layout: full-width form without the blue side panel
         right_panel = tk.Frame(self, bg=COLOR_BG)
         right_panel.pack(fill='both', expand=True, padx=50, pady=30)
 
         center_frame = tk.Frame(right_panel, bg=COLOR_BG)
         center_frame.place(relx=0.5, rely=0.5, anchor='center')
         
-        self.title_label = tk.Label(center_frame, text="INICIAR SESIÓN", font=FONT_HEADER, bg=COLOR_BG, fg=COLOR_PRIMARY)
+        self.title_label = tk.Label(center_frame, text="INICIAR SESION", font=FONT_HEADER, bg=COLOR_BG, fg=COLOR_PRIMARY)
         self.title_label.pack(pady=(0, 30), anchor='w')
         
         tk.Label(center_frame, text="Email", font=FONT_BODY_BOLD, bg=COLOR_BG, fg=COLOR_TEXT).pack(anchor='w')
@@ -419,7 +378,7 @@ class LoginFormScreen(ttk.Frame):
     def set_login_type(self, login_type):
         self.login_type = login_type
         if login_type == "Customer":
-            self.title_label.config(text="ACCESO HUÉSPED")
+            self.title_label.config(text="ACCESO HUESPED")
             self.email_entry.delete(0, tk.END)
         else: 
             self.title_label.config(text="ACCESO EMPLEADO")
@@ -440,11 +399,10 @@ class LoginFormScreen(ttk.Frame):
             if user_obj and user_obj.getPassword() == password:
                 self.controller.show_frame("MainMenuScreen", user_type="Employee", user_obj=user_obj)
             else:
-                messagebox.showerror("Error", "Credenciales inválidas.")
+                messagebox.showerror("Error", "Credenciales invalidas.")
 
 
 class LoginSuccessScreen(ttk.Frame):
-    # Clase auxiliar para redirección, generalmente saltamos directo al menú
     def __init__(self, parent, controller):
         ttk.Frame.__init__(self, parent)
 class MainMenuScreen(ttk.Frame):
@@ -452,16 +410,14 @@ class MainMenuScreen(ttk.Frame):
         ttk.Frame.__init__(self, parent)
         self.controller = controller
         
-        # Barra Superior
         top_bar = tk.Frame(self, bg=COLOR_WHITE, height=60)
         top_bar.pack(side='top', fill='x')
         top_bar.pack_propagate(False)
         
-        tk.Label(top_bar, text="LE VILLA DASHBOARD", font=('Times New Roman', 14, 'bold'), bg=COLOR_WHITE, fg=COLOR_PRIMARY).pack(side='left', padx=20)
+        tk.Label(top_bar, text="LE VILLA -HOTEL & SPA- ", font=('Times New Roman', 14, 'bold'), bg=COLOR_WHITE, fg=COLOR_PRIMARY).pack(side='left', padx=20)
         self.user_label = tk.Label(top_bar, text="", font=FONT_BODY, bg=COLOR_WHITE, fg=COLOR_TEXT)
         self.user_label.pack(side='right', padx=20)
         
-        # Contenedor Principal con Scroll si fuera necesario, aqui usaremos grid simple
         self.main_area = tk.Frame(self, bg=COLOR_BG)
         self.main_area.pack(fill='both', expand=True, padx=40, pady=40)
         
@@ -469,12 +425,11 @@ class MainMenuScreen(ttk.Frame):
         self.grid_buttons_frame.pack(anchor='center')
 
     def create_dashboard_card(self, parent, icon, title, command, row, col):
-        """Crea un botón grande estilo tarjeta."""
         frame = tk.Frame(parent, bg=COLOR_WHITE, width=200, height=150)
         frame.grid(row=row, column=col, padx=15, pady=15)
-        frame.pack_propagate(False) # Forzar tamaño
+        frame.pack_propagate(False) 
         
-        # Comportamiento de botón en todo el frame
+        
         def on_click(e): command()
         
         icon_lbl = tk.Label(frame, text=icon, font=('Segoe UI', 30), bg=COLOR_WHITE, fg=COLOR_PRIMARY, cursor="hand2")
@@ -497,45 +452,36 @@ class MainMenuScreen(ttk.Frame):
         self.user_label.bind("<Button-1>", lambda e: self.controller.show_frame("WelcomeScreen"))
         self.user_label.configure(cursor="hand2")
 
-        # Limpiar botones anteriores
         for widget in self.grid_buttons_frame.winfo_children():
             widget.destroy()
 
-        # Generar Dashboard
-        # Fila 1
-        self.create_dashboard_card(self.grid_buttons_frame, "📅", "Reservar Habitación", self.open_create_reservation, 0, 0)
+        self.create_dashboard_card(self.grid_buttons_frame, "📅", "Reservar Habitacion", self.open_create_reservation, 0, 0)
         self.create_dashboard_card(self.grid_buttons_frame, "🛎️", "Solicitar Servicio", self.open_create_service_reservation, 0, 1)
-        self.create_dashboard_card(self.grid_buttons_frame, "👁️", "Ver Mis Reservas", self.view_room_reservation, 0, 2)
+        self.create_dashboard_card(self.grid_buttons_frame, "👁️", "Ver mis Reservas", self.view_room_reservation, 0, 2)
         
-        # Fila 2
         self.create_dashboard_card(self.grid_buttons_frame, "🍽️", "Ver Servicios Activos", self.view_service_reservation, 1, 0)
-        self.create_dashboard_card(self.grid_buttons_frame, "ℹ️", "Info Hab. Demo", self.view_room_info, 1, 1)
+        self.create_dashboard_card(self.grid_buttons_frame, "ℹ️", "Info de las habitaciones", self.view_room_info, 1, 1)
 
-    # --- Wrappers de Funcionalidad para abrir ventanas ---
     def open_create_reservation(self): CreateReservationWindow(self.controller.master, self.controller)
     def open_create_service_reservation(self): CreateServiceReservationWindow(self.controller.master, self.controller)
 
 
     def view_room_reservation(self):
-        # Abrir ventana estilizada de visualización de reservas
         ViewReservationsWindow(self.controller.master, self.controller)
 
     def view_service_reservation(self):
-        # Abrir ventana estilizada de visualización de servicios
         ViewServicesWindow(self.controller.master, self.controller)
 
     def view_room_info(self):
-        # Abrir ventana con información de habitaciones
         RoomInfoWindow(self.controller.master, self.controller)
 
 
 class CreateReservationWindow(tk.Toplevel):
-    """Ventana para crear una nueva reserva de habitación."""
     def __init__(self, master, controller):
         tk.Toplevel.__init__(self, master)
         self.controller = controller
 
-        self.title("Reservar Habitación") # <-- El código huérfano empieza aquí
+        self.title("Reservar Habitacion") # <-- El código huérfano empieza aquí
         center_window(self, 600, 700)
         self.configure(bg=COLOR_BG)
         
@@ -544,29 +490,26 @@ class CreateReservationWindow(tk.Toplevel):
 
         ttk.Label(container, text="Nueva Reserva", style='Title.TLabel').pack(pady=(0, 20))
 
-        # Grid layout para formulario
         f = ttk.Frame(container, style='Card.TFrame')
         f.pack(fill='both', expand=True)
 
-        # Campos
         self.create_field(f, "Email Cliente:", 0)
         self.email_entry = ttk.Entry(f, width=30); self.email_entry.grid(row=0, column=1, pady=10)
         if controller.frames['MainMenuScreen'].user_type == 'Customer':
             self.email_entry.insert(0, controller.frames['MainMenuScreen'].user_obj.getEmail())
 
-        self.create_field(f, "Tipo Habitación:", 1)
+        self.create_field(f, "Tipo Habitacion:", 1)
         self.room_type_var = tk.StringVar(value="Suite")
         self.cb_type = ttk.Combobox(f, textvariable=self.room_type_var, values=["Suite", "Doble", "Individual"], state="readonly")
         self.cb_type.grid(row=1, column=1, pady=10)
         
-        self.create_field(f, "Check-In (AAAA-MM-DD):", 2)
+        self.create_field(f, "Registro entrada (AAAA-MM-DD):", 2)
         self.in_entry = ttk.Entry(f); self.in_entry.insert(0, str(date.today())); self.in_entry.grid(row=2, column=1, pady=10)
 
-        self.create_field(f, "Check-Out (AAAA-MM-DD):", 3)
+        self.create_field(f, "Registro salida (AAAA-MM-DD):", 3)
         self.out_entry = ttk.Entry(f); self.out_entry.insert(0, "2025-12-31"); self.out_entry.grid(row=3, column=1, pady=10)
 
-        # Simulación simple de disponibilidad (sin lista completa para ahorrar espacio visual)
-        self.create_field(f, "Habitación Disponible:", 4)
+        self.create_field(f, "Habitacion Disponible:", 4)
         all_rooms = self.controller.data.get('rooms', {}).values()
         available_rooms = [r for r in all_rooms if r.getStatus().lower() == 'available']
         room_options = [f"{r.getId()}: {r.getType()} (${r.getCost():.2f})" for r in available_rooms]
@@ -575,7 +518,6 @@ class CreateReservationWindow(tk.Toplevel):
         self.room_cb.grid(row=4, column=1, pady=10)
         if room_options: self.room_cb.set(room_options[0])
         
-        # Agregar opción de servicio adicional
         ttk.Label(f, text="Servicio Adicional:", style='Card.TLabel', font=FONT_BODY_BOLD).grid(row=5, column=0, sticky='w', padx=10)
         services = self.controller.data.get('services', {})
         service_options = ["Ninguno"] + [f"{s.getId()}: {s.getType()} (${s.getCost():.2f})" for s in services.values()]
@@ -590,47 +532,41 @@ class CreateReservationWindow(tk.Toplevel):
         ttk.Label(parent, text=text, style='Card.TLabel', font=FONT_BODY_BOLD).grid(row=row, column=0, sticky='w', padx=10)
 
     def process(self):
-        # Lógica simplificada invocando la lógica original si es posible
-        # Validar entradas antes de crear la reserva
         room_info = self.room_var.get()
         try:
             rid = int(room_info.split(':')[0])
         except Exception:
-            messagebox.showerror("Error", "Debe seleccionar una habitación válida.")
+            messagebox.showerror("Error", "Debe seleccionar una habitacion valida.")
             return
 
         room = self.controller.data.get('rooms', {}).get(rid)
         cust = self.controller.data['customers'].get(self.email_entry.get())
 
         if not room or not cust:
-            messagebox.showerror("Error", "Datos inválidos: cliente o habitación no encontrados.")
+            messagebox.showerror("Error", "Datos invalidos: cliente o habitacion no encontrados.")
             return
 
-        # Validar formato y orden de fechas
         from datetime import datetime
         try:
             check_in = datetime.strptime(self.in_entry.get().strip(), "%Y-%m-%d").date()
             check_out = datetime.strptime(self.out_entry.get().strip(), "%Y-%m-%d").date()
         except Exception:
-            messagebox.showerror("Fecha inválida", "Formato de fecha inválido. Use AAAA-MM-DD.")
+            messagebox.showerror("Fecha invalida", "Formato de fecha invalido. Use AAAA-MM-DD.")
             return
 
         if check_out <= check_in:
-            messagebox.showerror("Fechas inválidas", "La fecha de salida debe ser posterior a la fecha de entrada.")
+            messagebox.showerror("Fechas invalidas", "La fecha de salida debe ser posterior a la fecha de entrada.")
             return
 
-        # Crear reserva y proceder
         try:
             res = Reservation(self.controller.next_reservation_id, self.in_entry.get().strip(), self.out_entry.get().strip(), cust, room)
             if not res.createReservation():
-                messagebox.showerror("Error", "Habitación no disponible.")
+                messagebox.showerror("Error", "Habitacion no disponible.")
                 return
 
-            # Calcular noches y subtotales
             num_nights = (check_out - check_in).days
             room_subtotal = room.getCost() * num_nights
 
-            # Revisar servicio adicional
             additional_service = None
             service_subtotal = 0
             sel = self.service_var.get()
@@ -646,13 +582,11 @@ class CreateReservationWindow(tk.Toplevel):
 
             total_cost = room_subtotal + service_subtotal
 
-            # Guardar la reserva en la base de datos ANTES de ir al pago
             new_res_id = self.controller.reservation_dao.create(res, total_cost)
             if not new_res_id:
                 messagebox.showerror("Error de Base de Datos", "No se pudo registrar la reserva. Intente de nuevo.")
                 return
             
-            # SOLUCIÓN: Añadir la nueva reserva a los datos en memoria de la app.
             self.controller.data['reservations'][new_res_id] = res
 
             PaymentWindow(self.master, self.controller, res, total_cost, cust, additional_service, room_subtotal, service_subtotal)
@@ -678,9 +612,8 @@ class PaymentWindow(tk.Toplevel):
         card = ttk.Frame(self, style='Card.TFrame', padding=20)
         card.pack(fill='both', expand=True, padx=20, pady=20)
         
-        ttk.Label(card, text="Pago de Habitación", style='Title.TLabel').pack(pady=10)
+        ttk.Label(card, text="Pago de Habitacion", style='Title.TLabel').pack(pady=10)
 
-        # Intentar calcular/desplegar subtotales si no se recibieron
         if self.room_subtotal is None:
             try:
                 from datetime import datetime
@@ -691,8 +624,7 @@ class PaymentWindow(tk.Toplevel):
             except Exception:
                 self.room_subtotal = self.total_cost
 
-        # Mostrar desglose
-        ttk.Label(card, text=f"Habitación: ${self.room_subtotal:.2f}", style='Card.TLabel').pack(pady=(8,2))
+        ttk.Label(card, text=f"Habitacion: ${self.room_subtotal:.2f}", style='Card.TLabel').pack(pady=(8,2))
         if self.additional_service and self.service_subtotal:
             try:
                 svc_name = self.additional_service.getType()
@@ -706,7 +638,6 @@ class PaymentWindow(tk.Toplevel):
         ttk.Radiobutton(card, text="Tarjeta", variable=self.method, value="Tarjeta").pack()
         ttk.Radiobutton(card, text="Efectivo", variable=self.method, value="Efectivo").pack()
 
-        # Botones: pagar y regresar
         btn_frame = ttk.Frame(card)
         btn_frame.pack(fill='x', pady=(12,0))
         ModernButton(btn_frame, text="PAGAR", command=self.pay).pack(side='left', fill='x', expand=True, padx=(0,6))
@@ -715,11 +646,9 @@ class PaymentWindow(tk.Toplevel):
     def pay(self):
         p = Payment(self.controller.next_payment_id, self.total_cost, self.method.get(), self.reservation)
         p.processPayment()
-        # Guardar en la base de datos
         new_payment_id = self.controller.payment_dao.create(p)
         if new_payment_id:
-            messagebox.showinfo("Éxito", f"Pago #{new_payment_id} completado y guardado.")
-            # Asociar el pago a la reserva en la base de datos
+            messagebox.showinfo("Exito", f"Pago #{new_payment_id} completado y guardado.")
             self.controller.reservation_dao.link_payment(self.reservation.getId(), new_payment_id)
         else:
             messagebox.showerror("Error de Base de Datos", "El pago fue procesado pero no se pudo guardar en la base de datos.")
@@ -738,14 +667,12 @@ class ViewReservationsWindow(tk.Toplevel):
         card.pack(fill='both', expand=True, padx=20, pady=20)
         ttk.Label(card, text="Reservas", style='Title.TLabel').pack(pady=(0,10))
         
-        # --- Treeview para mostrar las reservas en una tabla ---
         tree_frame = ttk.Frame(card)
         tree_frame.pack(fill='both', expand=True, pady=5)
         
         columns = ('id', 'customer', 'room', 'check_in', 'check_out', 'cost')
         self.tree = ttk.Treeview(tree_frame, columns=columns, show='headings')
         
-        # Definir encabezados
         self.tree.heading('id', text='ID')
         self.tree.heading('customer', text='Cliente')
         self.tree.heading('room', text='Habitación')
@@ -753,7 +680,6 @@ class ViewReservationsWindow(tk.Toplevel):
         self.tree.heading('check_out', text='Check-Out')
         self.tree.heading('cost', text='Costo Total')
         
-        # Configurar columnas
         self.tree.column('id', width=50, anchor='center')
         self.tree.column('customer', width=150)
         self.tree.column('room', width=80, anchor='center')
@@ -767,25 +693,20 @@ class ViewReservationsWindow(tk.Toplevel):
         self.tree.configure(yscrollcommand=scrollbar.set)
         scrollbar.pack(side='right', fill='y')
 
-        # Llenar la tabla con datos
         self.load_reservations()
 
-        # --- Botones de acción ---
         btn_frame = ttk.Frame(card, style='Card.TFrame')
         btn_frame.pack(fill='x', pady=(10, 0))
 
-        # El botón de eliminar solo es visible para empleados
         if self.controller.frames['MainMenuScreen'].user_type == 'Employee':
-            ModernButton(btn_frame, text="❌ Eliminar Reserva Seleccionada", type="secondary", command=self.delete_selected_reservation).pack(side='left')
+            ModernButton(btn_frame, text="Eliminar Reserva Seleccionada", type="secondary", command=self.delete_selected_reservation).pack(side='left')
 
         ModernButton(btn_frame, text="Cerrar", command=self.destroy).pack(side='right')
 
     def load_reservations(self):
-        # Limpiar tabla antes de cargar
         for i in self.tree.get_children():
             self.tree.delete(i)
         
-        # Cargar todas las reservas (los empleados ven todo)
         reservations = self.controller.data.get('reservations', {}).values()
         for res in sorted(reservations, key=lambda r: r.getId()):
             customer_name = res.getCustomer().getName()
@@ -796,22 +717,18 @@ class ViewReservationsWindow(tk.Toplevel):
     def delete_selected_reservation(self):
         selected_item = self.tree.focus()
         if not selected_item:
-            messagebox.showwarning("Sin Selección", "Por favor, seleccione una reserva de la lista para eliminar.")
+            messagebox.showwarning("Sin SelecciOn", "Por favor, seleccione una reserva de la lista para eliminar.")
             return
 
         values = self.tree.item(selected_item, 'values')
         reservation_id = int(values[0])
         customer_name = values[1]
 
-        if messagebox.askyesno("Confirmar Eliminación", f"¿Está seguro de que desea eliminar la reserva #{reservation_id} de {customer_name}?"):
+        if messagebox.askyesno("Confirmar Eliminacion", f"¿Esta seguro de que desea eliminar la reserva #{reservation_id} de {customer_name}?"):
             if self.controller.reservation_dao.delete(reservation_id):
-                messagebox.showinfo("Éxito", f"La reserva #{reservation_id} ha sido eliminada.")
-                # Eliminar de la vista
+                messagebox.showinfo("Exito", f"La reserva #{reservation_id} ha sido eliminada.")
                 self.tree.delete(selected_item)
-                # SOLUCIÓN: Eliminar también de los datos en memoria.
                 del self.controller.data['reservations'][reservation_id]
-                # Opcional: recargar todo
-                # self.load_reservations() 
             else:
                 messagebox.showerror("Error de Base de Datos", "No se pudo eliminar la reserva.")
 
@@ -861,7 +778,7 @@ class RoomInfoWindow(tk.Toplevel):
     def __init__(self, master, controller):
         tk.Toplevel.__init__(self, master)
         self.controller = controller
-        self.title("Información de Habitaciones")
+        self.title("Informacion de Habitaciones")
         center_window(self, 600, 420)
         self.configure(bg=COLOR_BG)
 
@@ -880,7 +797,7 @@ class RoomInfoWindow(tk.Toplevel):
 
         rooms = controller.data.get('rooms', {}).values()
         if not rooms:
-            txt.insert('end', 'No hay información de habitaciones.')
+            txt.insert('end', 'No hay informacion de habitaciones.')
         else:
             for r in sorted(rooms, key=lambda x: x.getId()):
                 info = f"ID: {r.getId()} | Tipo: {r.getType()} | Precio: ${r.getCost():.2f} | Estado: {r.getStatus()}\n"
@@ -899,9 +816,8 @@ class RegisterCustomerWindow(tk.Toplevel):
         center_window(self, 500, 600)
         self.configure(bg=COLOR_BG)
         
-        # Implementación visual simplificada para consistencia
         c = ttk.Frame(self, style='Card.TFrame', padding=20); c.pack(fill='both', expand=True, padx=20, pady=20)
-        ttk.Label(c, text="Nuevo Huésped", style='Title.TLabel').pack()
+        ttk.Label(c, text="Nuevo Huesped", style='Title.TLabel').pack()
         
         f = ttk.Frame(c, style='Card.TFrame'); f.pack(pady=10)
         
@@ -918,7 +834,6 @@ class RegisterCustomerWindow(tk.Toplevel):
         ModernButton(c, text="REGRESAR", type='secondary', command=self.destroy).pack(fill='x', pady=(0,10))
 
     def save(self):
-        # Lógica resumida
         data = {k: v.get().strip() for k, v in self.entries.items()}
         password = self.pw.get().strip()
 
@@ -931,7 +846,6 @@ class RegisterCustomerWindow(tk.Toplevel):
         new_id = self.controller.customer_dao.create(new_customer)
         if new_id:
             messagebox.showinfo("Registro Exitoso", f"Cliente {new_customer.getName()} registrado con ID: {new_id}.")
-            # ACTUALIZAR DATOS EN MEMORIA: Añadir el nuevo cliente a la sesión actual.
             self.controller.data['customers'][new_customer.getEmail()] = new_customer
             self.destroy()
         else:
@@ -945,7 +859,6 @@ class RegisterEmployeeWindow(tk.Toplevel):
         center_window(self, 500, 650)
         self.configure(bg=COLOR_BG)
 
-        # Contenedor principal estilo Tarjeta (mismo estilo que RegisterCustomerWindow)
         c = ttk.Frame(self, style='Card.TFrame', padding=20)
         c.pack(fill='both', expand=True, padx=20, pady=20)
         ttk.Label(c, text="Nuevo Empleado", style='Title.TLabel').pack()
@@ -953,7 +866,6 @@ class RegisterEmployeeWindow(tk.Toplevel):
         f = ttk.Frame(c, style='Card.TFrame')
         f.pack(pady=10)
 
-        # Campos del formulario (mismos márgenes/estilo que cliente)
         self.entries = {}
         fields = ["first_name", "middle_name", "last_name", "second_last_name", "phone", "email", "status", "curp"]
         for i, field in enumerate(fields):
@@ -962,47 +874,39 @@ class RegisterEmployeeWindow(tk.Toplevel):
             e.grid(row=i, column=1, pady=5)
             self.entries[field] = e
 
-        # Role selector
         ttk.Label(f, text="Role", style='Card.TLabel').grid(row=len(fields), column=0, sticky='w')
         self.role_var = tk.StringVar(value='Recepcionista')
         role_cb = ttk.Combobox(f, textvariable=self.role_var, values=["Recepcionista", "Botones", "Servicio"], state='readonly')
         role_cb.grid(row=len(fields), column=1, pady=5)
 
-        # Password
         ttk.Label(f, text="Password", style='Card.TLabel').grid(row=len(fields)+1, column=0, sticky='w')
         self.pw = ttk.Entry(f, show='*'); self.pw.grid(row=len(fields)+1, column=1, pady=5)
         ttk.Label(f, text="Confirmar Password", style='Card.TLabel').grid(row=len(fields)+2, column=0, sticky='w')
         self.pw_confirm = ttk.Entry(f, show='*'); self.pw_confirm.grid(row=len(fields)+2, column=1, pady=5)
 
-        # Botones: Registrar y Regresar (igual estilo que otros formularios)
         ModernButton(c, text="REGISTRAR EMPLEADO", command=self.process_registration).pack(fill='x', pady=(10,8))
         ModernButton(c, text="REGRESAR", type="secondary", command=self.go_back).pack(fill='x', pady=(0,10))
 
     def process_registration(self):
-        # Recolectar datos
         data = {k: v.get().strip() for k, v in self.entries.items()}
         password = self.pw.get().strip()
         confirm = self.pw_confirm.get().strip()
 
-        # Validaciones simples
         required = ['first_name', 'last_name', 'phone', 'email', 'status', 'curp']
         if not all(data.get(k) for k in required):
             messagebox.showwarning("Datos Incompletos", "Por favor complete los campos obligatorios.")
             return
         if password == "" or password != confirm:
-            messagebox.showerror("Contraseña", "Las contraseñas están vacías o no coinciden.")
+            messagebox.showerror("Contraseña", "Las contraseñas están vacias o no coinciden.")
             return
 
-        # Calcular nuevo ID
         try:
             existing_ids = [int(k) for k in self.controller.data['employees'].keys()]
             new_id = max(existing_ids) + 1 if existing_ids else 1
         except Exception:
             new_id = 1
 
-        # --- LÓGICA DE PERSISTENCIA CON DAO ---
         role = self.role_var.get()
-        # Crear la instancia según role
         if role == 'Recepcionista':
             new_emp = Receptionist(new_id, data['first_name'], data.get('middle_name',''), data['last_name'], data.get('second_last_name',''), data['phone'], data['email'], data['status'], data['curp'], password)
         elif role == 'Botones':
@@ -1010,12 +914,10 @@ class RegisterEmployeeWindow(tk.Toplevel):
         else:
             new_emp = Employee(new_id, data['first_name'], data.get('middle_name',''), data['last_name'], data.get('second_last_name',''), data['phone'], data['email'], data['status'], data['curp'], password)
         
-        # Usar el DAO para guardar en la base de datos
         new_id_from_db = self.controller.employee_dao.create(new_emp)
         
         if new_id_from_db:
             messagebox.showinfo("Registro Exitoso", f"Empleado {new_emp.getFirstName()} registrado en la base de datos con ID: {new_id_from_db}.")
-            # ACTUALIZAR DATOS EN MEMORIA: Añadir el nuevo empleado a la sesión actual.
             self.controller.data['employees'][new_emp.getEmail()] = new_emp
             self.destroy()
         else:
@@ -1031,7 +933,6 @@ class RegisterEmployeeWindow(tk.Toplevel):
 
 if __name__ == '__main__':
     raiz = tk.Tk()
-    # Intento de mejora de renderizado de fuentes en Windows
     try:
         from ctypes import windll
         windll.shcore.SetProcessDpiAwareness(1)

@@ -1,17 +1,11 @@
-# dao/payment_dao.py
-
 import mysql.connector
 from db_connection import get_conn, close_conn
 from payment import Payment
 from typing import Optional
 
 class PaymentDAO:
-    """DAO para la entidad PAYMENTS."""
 
     def create(self, payment: Payment) -> Optional[int]:
-        """
-        Inserta un nuevo pago en la base de datos.
-        """
         conn = None
         cursor = None
         

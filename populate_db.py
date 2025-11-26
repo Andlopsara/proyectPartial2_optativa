@@ -1,14 +1,8 @@
-# populate_db.py
-
+#codigo con empleados de ejemplo para comenzar la BD
 def clear_tables(daos):
-    """Vacía las tablas para evitar datos duplicados."""
-    # Esta es una simplificación. En un sistema real, se usaría DROP/CREATE o DELETE.
-    # Por ahora, asumimos que las tablas están vacías o que los duplicados no son un problema crítico para la prueba.
-    print("--- Limpieza de tablas omitida (hacer manualmente si es necesario) ---")
-    # Por ejemplo: customer_dao.delete_all() si existiera ese método.
+    print("--- Limpieza de tablas omitida) ---")
 
 def populate_employees(employee_dao):
-    """Puebla la tabla de empleados."""
     from receptionist import Receptionist
     from bellboy import Bellboy
     print("\n--- Creando Empleados ---")
@@ -21,7 +15,6 @@ def populate_employees(employee_dao):
         print(f"-> Empleado {bellboy.getFirstName()} creado con ID: {bellboy.getId()}")
 
 def populate_customers(customer_dao):
-    """Puebla la tabla de clientes."""
     from customer import Customer
     print("\n--- Creando Clientes ---")
     customer1 = Customer(0, "Andrea", "Sarahi", "Lopez", "Guerrero", "4420000000", "andrea@mail.com", "Querétaro", "LOGA001122QRO", "andrea123")
@@ -33,16 +26,15 @@ def populate_customers(customer_dao):
         print(f"-> Cliente '{customer2.getName()}' creado con ID: {customer2.getId()}")
 
 def populate_services(service_dao):
-    """Puebla la tabla de servicios."""
     from service import Service
     print("\n--- Creando Servicios ---")
     services_to_create = [
-        Service(0, "Room Service 24H", 15.00, "Entrega de alimentos y bebidas a la habitación a cualquier hora."),
-        Service(0, "Lavandería Express", 30.00, "Lavado, secado y planchado con entrega en 4 horas."),
-        Service(0, "Acceso a Spa", 50.00, "Acceso a sauna, baño turco y piscina climatizada por día."),
-        Service(0, "Masaje Terapéutico", 85.00, "Sesión privada de masaje de cuerpo completo (60 minutos)."),
-        Service(0, "Cama Adicional", 25.00, "Instalación de una cama supletoria en la habitación."),
-        Service(0, "Parqueo con Valet", 10.00, "Servicio de aparcacoches y recogida del vehículo.")
+        Service(0, "Room Service 24H", 15.00, "Entrega de alimentos y bebidas a la habitacion a cualquier hora."),
+        Service(0, "Lavanderia Express", 30.00, "Lavado, secado y planchado con entrega en 4 horas."),
+        Service(0, "Acceso a Spa", 50.00, "Acceso a sauna, baño turco y piscina climatizada por dia."),
+        Service(0, "Masaje Terapeutico", 85.00, "Sesion privada de masaje de cuerpo completo (60 minutos)."),
+        Service(0, "Cama Adicional", 25.00, "Instalacion de una cama supletoria en la habitacion."),
+        Service(0, "Parqueo con Valet", 10.00, "Servicio de aparcacoches y recogida del vehiculo.")
     ]
     for svc in services_to_create:
         if service_dao.create(svc):
@@ -54,17 +46,17 @@ def populate_rooms(room_dao):
     print("\n--- Creando Habitaciones ---")
     rooms_to_create = [
         Room(0, "101", "Sencilla", "Available", 120.00, "Una cama Queen size, ideal para un viajero."),
-        Room(0, "205", "Doble", "Available", 180.00, "Dos camas Queen size, para hasta 4 huéspedes."),
-        Room(0, "310", "King Size", "Not available", 220.00, "Una cama King size, con balcón privado."),
-        Room(0, "401", "Suite Ejecutiva", "Available", 350.00, "Habitación con sala de estar, minibar y escritorio de trabajo."),
-        Room(0, "503", "Suite Presidencial", "Maintenance", 600.00, "La suite más lujosa, con jacuzzi y comedor privado."),
-        Room(0, "108", "Accesible", "Available", 150.00, "Habitación adaptada para personas con movilidad reducida.")
+        Room(0, "205", "Doble", "Available", 180.00, "Dos camas Queen size, para hasta 4 huespedes."),
+        Room(0, "310", "King Size", "Not available", 220.00, "Una cama King size, con balcon privado."),
+        Room(0, "401", "Suite Ejecutiva", "Available", 350.00, "Habitacion con sala de estar, minibar y escritorio de trabajo."),
+        Room(0, "503", "Suite Presidencial", "Maintenance", 600.00, "La suite mas lujosa, con jacuzzi y comedor privado."),
+        Room(0, "108", "Accesible", "Available", 150.00, "Habitacion adaptada para personas con movilidad reducida.")
     ]
     count = 0
     for room in rooms_to_create:
         if room_dao.create(room):
             count += 1
-            print(f"-> Habitación '{room.getType()}' creada con ID: {room.getId()}")
+            print(f"-> Habitacion '{room.getType()}' creada con ID: {room.getId()}")
     print(f"-> {count} habitaciones creadas exitosamente.")
 
 def populate_initial_data():
@@ -87,7 +79,6 @@ def populate_initial_data():
             "room": RoomDAO()
         }
 
-        # clear_tables(daos) # Opcional: si quieres limpiar las tablas antes de poblar
         populate_employees(daos["employee"])
         populate_customers(daos["customer"])
         populate_services(daos["service"])
@@ -100,5 +91,4 @@ def populate_initial_data():
         print("Por favor, verifica la conexión a la BD, las variables de entorno y que las tablas existan.")
 
 if __name__ == '__main__':
-    # Este bloque se ejecuta cuando corres 'python populate_db.py' desde la terminal
     populate_initial_data()

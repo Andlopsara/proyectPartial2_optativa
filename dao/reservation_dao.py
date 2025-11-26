@@ -1,5 +1,3 @@
-# dao/reservation_dao.py
-
 import mysql.connector
 from db_connection import get_conn, close_conn
 from customer import Customer
@@ -8,13 +6,8 @@ from reservation import Reservation
 from typing import Optional, List
 
 class ReservationDAO:
-    """DAO para la entidad RESERVATIONS."""
 
     def create(self, res: Reservation, total_cost: float) -> Optional[int]:
-        """
-        Inserta una nueva reserva en la base de datos.
-        El pago se asocia después.
-        """
         conn = None
         cursor = None
         query = """
@@ -27,7 +20,7 @@ class ReservationDAO:
             res.getRoom().getId(),
             res.getCheckIn(),
             res.getCheckOut(),
-            'Confirmed',  # Se confirma al pasar a la ventana de pago
+            'Confirmed',
             total_cost
         )
 
@@ -38,7 +31,7 @@ class ReservationDAO:
             conn.commit()
             
             res_id = cursor.lastrowid
-            res.setId(res_id) # Actualizamos el ID en el objeto
+            res.setId(res_id)
             
             print(f"INFO: Reserva #{res_id} creada en la BD.")
             return res_id
@@ -55,10 +48,6 @@ class ReservationDAO:
                 close_conn(conn)
 
     def get_all(self) -> List[Reservation]:
-        """
-        Obtiene todas las reservas de la base de datos, reconstruyendo los objetos
-        Customer y Room asociados.
-        """
         conn = None
         cursor = None
         reservations = []
@@ -78,13 +67,9 @@ class ReservationDAO:
             records = cursor.fetchall()
 
             for record in records:
-                # Reconstruir el objeto Customer
                 customer = Customer(record[5], record[6], record[7], record[8], record[9], record[10], record[11], record[12], record[13], record[14])
-                
-                # Reconstruir el objeto Room
                 room = Room(record[15], record[16], record[17], record[18], record[19], record[20])
 
-                # Reconstruir el objeto Reservation
                 reservation = Reservation(record[0], str(record[1]), str(record[2]), customer, room)
                 reservations.append(reservation)
 
@@ -99,9 +84,6 @@ class ReservationDAO:
         return reservations
 
     def delete(self, reservation_id: int) -> bool:
-        """
-        Elimina una reserva de la base de datos por su ID.
-        """
         conn = None
         cursor = None
         query = "DELETE FROM RESERVATIONS WHERE reservation_id = %s"
@@ -127,9 +109,6 @@ class ReservationDAO:
                 close_conn(conn)
 
     def link_payment(self, reservation_id: int, payment_id: int) -> bool:
-        """
-        Asocia un ID de pago a una reserva existente.
-        """
         conn = None
         cursor = None
         query = "UPDATE RESERVATIONS SET payment_id = %s WHERE reservation_id = %s"

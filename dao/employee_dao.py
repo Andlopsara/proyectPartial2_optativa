@@ -1,29 +1,21 @@
-# dao/employee_dao.py
-
 import mysql.connector
-from db_connection import get_conn, close_conn # Para usar el Pool de Conexiones
-# Importa TODAS las clases de empleados
+from db_connection import get_conn, close_conn
 from employee import Employee 
 from receptionist import Receptionist
 from bellboy import Bellboy
 from typing import Optional, List
 
 class EmployeeDAO:
-    """DAO para la entidad EMPLOYEES, incluyendo sus subclases."""
-
-    # Mapeo de roles de la BD a Clases de Python
     ROLE_MAPPING = {
         "Receptionist": Receptionist,
         "Bellboy": Bellboy,
         "Employee": Employee,
-        "Manager": Employee  # Si no tienes clase Manager, usa Employee
+        "Manager": Employee
     }
 
-    # C - CREATE: Inserta un nuevo Empleado (o subclase)
     def create(self, emp: Employee) -> Optional[int]:
         conn = None
         cursor = None
-        # El rol se determina por el tipo de instancia (Receptionist, Bellboy, Employee)
         role = type(emp).__name__
         if role not in self.ROLE_MAPPING: # type: ignore
             role = "Employee"
@@ -58,7 +50,6 @@ class EmployeeDAO:
             if conn:
                 close_conn(conn)
 
-    # R - READ: Obtiene un Empleado (o subclase) por ID
     def get_by_id(self, emp_id: int) -> Optional[Employee]:
         conn = get_conn()
         cursor = conn.cursor()
@@ -76,11 +67,7 @@ class EmployeeDAO:
             
             if record:
                 (id, fName, sName, lName, sLName, phone, email, status, curp, password, role) = record
-                
-                # 1. Determina la clase a instanciar (Employee, Receptionist, o Bellboy)
                 EmployeeClass = self.ROLE_MAPPING.get(role, Employee)
-                
-                # 2. Instancia el objeto usando el constructor de la clase base Employee
                 return EmployeeClass(id, fName, sName, lName, sLName, phone, email, status, curp, password)
             return None
         except mysql.connector.Error as err:
@@ -90,7 +77,6 @@ class EmployeeDAO:
             cursor.close()
             close_conn(conn)
             
-    # R - READ ALL: Obtiene todos los Empleados
     def get_all(self) -> List[Employee]:
         conn = None
         cursor = None
@@ -107,7 +93,6 @@ class EmployeeDAO:
             records = cursor.fetchall()
             for record in records:
                 (id, fName, sName, lName, sLName, phone, email, status, curp, password, role) = record
-                # Usamos el mismo mapeo que en get_by_id para instanciar la clase correcta
                 EmployeeClass = self.ROLE_MAPPING.get(role, Employee)
                 employees.append(
                     EmployeeClass(id, fName, sName, lName, sLName, phone, email, status, curp, password)
@@ -122,7 +107,6 @@ class EmployeeDAO:
                 close_conn(conn)
         return employees
 
-    # U - UPDATE: Actualiza el estado de un Empleado
     def update_status(self, emp_id: int, new_status: str) -> bool:
         conn = get_conn()
         cursor = conn.cursor()
@@ -140,7 +124,6 @@ class EmployeeDAO:
             cursor.close()
             close_conn(conn)
             
-    # D - DELETE: Elimina un Empleado (Opcional: puedes preferir solo cambiar el status)
     def delete(self, emp_id: int) -> bool:
         conn = get_conn()
         cursor = conn.cursor()

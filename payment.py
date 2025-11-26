@@ -8,7 +8,6 @@ class Payment:
         self.__reservation = reservation
         self.__date = date.today()
 
-    # -------- Getters and Setters --------
     def getId(self): return self.__id
     def setId(self, id): self.__id = id
 
@@ -23,7 +22,6 @@ class Payment:
 
     def getDate(self): return self.__date
 
-    # -------- Métodos --------
     def processPayment(self):
         print(f"Payment processed for ${self.__amount} by {self.__paymentMethod} on {self.__date}.")
 

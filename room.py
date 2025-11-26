@@ -7,7 +7,6 @@ class Room:
         self.__cost = cost
         self.__description = description
 
-    # -------- Getters and Setters --------
     def getId(self): return self.__id
     def setId(self, id): self.__id = id
 
@@ -26,7 +25,6 @@ class Room:
     def getDescription(self): return self.__description
     def setDescription(self, description): self.__description = description
 
-    # -------- Métodos --------
     def assignCustomer(self, customer):
         if self.__status == "Available":
             self.__status = "Not available"

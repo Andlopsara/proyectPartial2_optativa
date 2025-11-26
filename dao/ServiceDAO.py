@@ -1,19 +1,14 @@
-# dao/service_dao.py
-
 import mysql.connector
 from db_connection import get_conn, close_conn
-from service import Service # Importa la clase Service
+from service import Service
 from typing import Optional, List
 
 class ServiceDAO:
-    """DAO para la entidad Service."""
 
-    # C - CREATE: Agrega un nuevo servicio al hotel
     def create(self, svc: Service) -> Optional[int]:
         conn = None
         cursor = None
         
-        # Mapeamos service.getType() a la columna 'name' de la BD
         query = """
             INSERT INTO SERVICES 
             (name, cost, description) 
@@ -41,7 +36,6 @@ class ServiceDAO:
             if conn:
                 close_conn(conn)
 
-    # R - READ: Obtiene un servicio por ID
     def get_by_id(self, service_id: int) -> Optional[Service]:
         conn = get_conn()
         cursor = conn.cursor()
@@ -53,9 +47,7 @@ class ServiceDAO:
             record = cursor.fetchone()
             
             if record:
-                # Mapeo: service_id, name (type), cost, description
                 (id, type_name, cost, description) = record
-                # Notar que 'name' de la BD se convierte en 'type' del objeto Service
                 return Service(id, type_name, cost, description)
             return None
         except mysql.connector.Error as err:
@@ -65,7 +57,6 @@ class ServiceDAO:
             cursor.close()
             close_conn(conn)
 
-    # R - READ ALL: Obtiene todos los servicios
     def get_all(self) -> List[Service]:
         conn = None
         cursor = None
@@ -88,7 +79,6 @@ class ServiceDAO:
                 close_conn(conn)
         return services
 
-    # D - DELETE: Elimina un servicio
     def delete(self, service_id: int) -> bool:
         conn = get_conn()
         cursor = conn.cursor()
@@ -99,7 +89,6 @@ class ServiceDAO:
             conn.commit()
             return cursor.rowcount > 0
         except mysql.connector.Error as err:
-            # Si el servicio está referenciado en otra tabla (RESERVATION_SERVICES), fallará por Foreign Key.
             print(f"Error DELETE Service: {err}")
             conn.rollback()
             return False

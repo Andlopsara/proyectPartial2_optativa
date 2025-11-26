@@ -1,15 +1,11 @@
-# dao/room_dao.py
-
 import mysql.connector
 from db_connection import get_conn, close_conn
 from room import Room
 from typing import List, Optional
 
 class RoomDAO:
-    """DAO para la entidad ROOMS."""
 
     def create(self, room: Room) -> Optional[int]:
-        """Inserta una nueva habitación en la base de datos."""
         conn = None
         cursor = None
         try:
@@ -21,13 +17,12 @@ class RoomDAO:
             cursor.execute(query, values)
             conn.commit()
             
-            # Obtenemos el ID real de la BD y lo asignamos al objeto
             room_id = cursor.lastrowid
             room.setId(room_id)
-            print(f"INFO: Habitación creada en la BD con ID: {room_id}.")
+            print(f"INFO: Habitacion creada en la BD con ID: {room_id}.")
             return room.getId()
         except mysql.connector.Error as err:
-            print(f"ERROR: No se pudo crear la habitación {room.getId()}: {err}")
+            print(f"ERROR: No se pudo crear la habitacion {room.getId()}: {err}")
             if conn:
                 conn.rollback()
             return None
@@ -38,7 +33,6 @@ class RoomDAO:
                 close_conn(conn)
 
     def get_all(self) -> List[Room]:
-        """Obtiene todas las habitaciones de la base de datos."""
         conn = None
         cursor = None
         rooms = []

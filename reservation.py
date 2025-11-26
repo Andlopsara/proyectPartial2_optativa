@@ -8,7 +8,6 @@ class Reservation:
         self.__payment = payment
         self.__services = []
 
-    # -------- Getters and Setters --------
     def getId(self): return self.__id
     def setId(self, id): self.__id = id
 
@@ -29,12 +28,9 @@ class Reservation:
 
     def getServices(self): return self.__services
 
-    # -------- Métodos --------
     def createReservation(self):
-        """Crea la reserva si la habitación está disponible."""
         if self.__room.getStatus() == "Available":
             self.__room.assignCustomer(self.__customer)
-            # Ahora llama al método makeReservation que ya existe en Customer
             self.__customer.makeReservation(self)
             print(f"Reservation #{self.__id} created successfully for {self.__customer.getName()}")
             return True
@@ -43,12 +39,10 @@ class Reservation:
             return False
 
     def cancelReservation(self):
-        """Cancela la reserva y libera la habitación."""
         self.__room.releaseRoom()
         print(f"Reservation #{self.__id} cancelled. Room {self.__room.getId()} released.")
 
     def modifyReservation(self, newCheckIn=None, newCheckOut=None):
-        """Modifica las fechas de entrada y/o salida de la reserva."""
         if newCheckIn:
             self.__checkIn = newCheckIn
             print(f"Reservation #{self.__id} check-in date updated to {newCheckIn}.")
@@ -57,12 +51,10 @@ class Reservation:
             print(f"Reservation #{self.__id} check-out date updated to {newCheckOut}.")
 
     def addService(self, service):
-        """Añade un servicio a la reserva."""
         self.__services.append(service)
         print(f"Service '{service.getType()}' added to reservation #{self.__id}.")
         
     def showInfo(self):
-        """AÑADIDO: Muestra la información esencial de la reserva."""
         customer_name = self.__customer.getName() if hasattr(self.__customer, 'getName') else 'Unknown Customer'
         room_id = self.__room.getId() if hasattr(self.__room, 'getId') else 'Unknown Room'
         info = (

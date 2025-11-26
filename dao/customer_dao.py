@@ -1,4 +1,3 @@
-
 import mysql.connector
 from db_connection import get_conn, close_conn
 from customer import Customer
@@ -6,10 +5,6 @@ from typing import Optional
 
 class CustomerDAO:
     def create(self, cust: Customer) -> Optional[int]:
-        """
-        Inserta un nuevo cliente en la base de datos.
-        Retorna el ID del cliente si tiene éxito, de lo contrario None.
-        """
         conn = None
         cursor = None
         try:
@@ -30,7 +25,6 @@ class CustomerDAO:
             cursor.execute(query, values)
             conn.commit()
             
-            # Obtener el ID generado y asignarlo al objeto
             cust_id = cursor.lastrowid
             cust.setId(cust_id)
             
@@ -49,10 +43,6 @@ class CustomerDAO:
                 close_conn(conn)
 
     def get_all(self) -> list[Customer]:
-        """
-        Obtiene todos los clientes de la base de datos.
-        Retorna una lista de objetos Customer.
-        """
         conn = None
         cursor = None
         customers = []
