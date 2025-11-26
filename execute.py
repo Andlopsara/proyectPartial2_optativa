@@ -15,10 +15,10 @@ from receptionist import Receptionist
 from bellboy import Bellboy
 from payment import Payment
 
-# ----------------- PALETA DE COLORES Y ESTILOS (LUXURY THEME) -----------------
+# ----------------- PALETA DE COLORES Y ESTILOS (TEMA LUJO) -----------------
 # Colores
 COLOR_PRIMARY = '#1A237E'      # Azul Marino Profundo (Barra lateral/Encabezados)
-COLOR_SECONDARY = '#283593'    # Azul un poco más claro (Hover)
+COLOR_SECONDARY = '#283593'    # Azul un poco más claro (Al pasar el mouse)
 COLOR_ACCENT = '#D4AF37'       # Dorado (Botones de acción principal)
 COLOR_BG = '#F5F6FA'           # Gris muy claro (Fondo de la app)
 COLOR_WHITE = '#FFFFFF'        # Blanco (Tarjetas)
@@ -34,11 +34,11 @@ FONT_BODY_BOLD = ('Segoe UI', 10, 'bold')
 FONT_BUTTON = ('Segoe UI', 10, 'bold')
 
 # ----------------- Funciones de Inicialización de Datos -----------------
-# (Misma lógica que tu archivo original, sin cambios funcionales)
+# Lógica idéntica a la original, sin cambios funcionales
 def init_data():
     customer1 = Customer(1, "Andrea", "Sarahi", "Lopez", "Guerrero", "4420000000", "andrea@mail.com", "Querétaro", "LOGA001122QRO", password="andrea123")
     customer2 = Customer(2, "Juan", "", "Perez", "Vera", "4423333333", "juan@mail.com", "Querétaro", "PEVJ001122QRO", password="juan123")
-    receptionist = Receptionist(1, "Brigitte", "", "Herrera", "Rodriguez", "4421111111", "brigitte@mail.com", "Active", "HERB001122QRO", password="brigitte123")
+    receptionist = Receptionist(1, "Brigitte", "", "Herrera", "Rodriguez", "4421111111", "brigitte@mail.com", "Activo", "HERB001122QRO", password="brigitte123")
     
     rooms = {}
     room_types = ["Suite", "Doble", "Individual"]
@@ -51,8 +51,8 @@ def init_data():
         room_id = 101 + i
         room_type = room_types[i % 3]
         cost = room_costs[room_type]
-        status = "Not available" if random.random() < 0.2 else "Available"
-        description = f"{room_type} room with capacity for {2 if room_type == 'Individual' else 4} persons"
+        status = "No disponible" if random.random() < 0.2 else "Disponible"
+        description = f"Habitación {room_type} con capacidad para {2 if room_type == 'Individual' else 4} personas"
         rooms[room_id] = Room(room_id, room_type, status, cost, description)
     
     service1 = Service(1, "Desayuno a la Habitación", 150.0, "Desayuno continental.")
@@ -60,7 +60,7 @@ def init_data():
     service3 = Service(3, "Masaje Relajante", 500.0, "Sesión de 60 min.")
     
     reservation1 = Reservation(1, "2025-10-10", "2025-10-15", customer1, rooms[103], None)
-    rooms[103].setStatus("Not available") 
+    rooms[103].setStatus("No disponible") 
     customer1.makeReservation(reservation1)
     
     service_reservation1 = ServiceReservation(101, "2025-10-11 08:00", customer1, service1)
@@ -78,24 +78,26 @@ def init_data():
         'services': {s.getId(): s for s in [service1, service2, service3]}
     }
 
-# ----------------- Utilidades UI -----------------
-
+# Función para centrar la ventana
 def center_window(window, width, height):
-    """Centra la ventana en la pantalla."""
+    """Centers the window on the screen."""
     screen_width = window.winfo_screenwidth()
     screen_height = window.winfo_screenheight()
-    x_cordinate = int((screen_width/2) - (width/2))
-    y_cordinate = int((screen_height/2) - (height/2))
-    window.geometry(f"{width}x{height}+{x_cordinate}+{y_cordinate}")
+    x = int((screen_width/2) - (width/2))
+    y = int((screen_height/2) - (height/2))
+    window.geometry(f"{width}x{height}+{x}+{y}")
 
 class ModernButton(tk.Button):
-    """Botón personalizado plano y moderno."""
-    def __init__(self, master, text, command, type="primary", **kwargs):
-        bg = COLOR_PRIMARY if type == "primary" else (COLOR_ACCENT if type == "accent" else COLOR_WHITE)
-        fg = COLOR_WHITE if type in ["primary", "accent"] else COLOR_PRIMARY
+    """Custom flat and modern button."""
+    def __init__(self, parent, text, command=None, **kwargs):
+        # Extract button_type from kwargs, default to "primary"
+        button_type = kwargs.pop('type', kwargs.pop('button_type', 'primary'))
         
-        super().__init__(master, text=text, command=command, 
-                         bg=bg, fg=fg, 
+        background = COLOR_PRIMARY if button_type == "primary" else (COLOR_ACCENT if button_type == "accent" else COLOR_WHITE)
+        foreground = COLOR_WHITE if button_type in ["primary", "accent"] else COLOR_PRIMARY
+        
+        super().__init__(parent, text=text, command=command, 
+                         bg=background, fg=foreground, 
                          font=FONT_BUTTON, relief="flat", 
                          activebackground=COLOR_SECONDARY, activeforeground=COLOR_WHITE,
                          bd=0, padx=20, pady=10, cursor="hand2", **kwargs)
@@ -943,12 +945,12 @@ class RegisterEmployeeWindow(tk.Toplevel):
 
 
 if __name__ == '__main__':
-    root = tk.Tk()
+    raiz = tk.Tk()
     # Intento de mejora de renderizado de fuentes en Windows
     try:
         from ctypes import windll
         windll.shcore.SetProcessDpiAwareness(1)
     except:
         pass
-    app = HotelGUI(root)
-    root.mainloop()
+    aplicacion = HotelGUI(raiz)
+    raiz.mainloop()

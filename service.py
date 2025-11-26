@@ -2,7 +2,7 @@ class Service:
     def __init__(self, id, type, cost, description):
         self.__id = id
         self.__type = type
-        self.__cost = cost # Agregado el costo
+        self.__cost = cost
         self.__description = description
 
     # -------- Getters and Setters --------
@@ -12,7 +12,7 @@ class Service:
     def getType(self): return self.__type
     def setType(self, type): self.__type = type
 
-    def getCost(self): return self.__cost # NUEVO Getter
+    def getCost(self): return self.__cost
     def setCost(self, cost): self.__cost = cost
 
     def getDescription(self): return self.__description

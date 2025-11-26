@@ -58,3 +58,4 @@ class Employee:
     def registerService(self, service):
         service.addService()
         print(f"Employee {self.__firstName} registered service {service.getType()}.")
+

@@ -66,11 +66,11 @@ class Reservation:
         customer_name = self.__customer.getName() if hasattr(self.__customer, 'getName') else 'Unknown Customer'
         room_id = self.__room.getId() if hasattr(self.__room, 'getId') else 'Unknown Room'
         info = (
-            f"--- Información de la Reserva #{self.__id} ---\n"
-            f"  Cliente: {customer_name}\n"
-            f"  Habitación: {room_id} ({self.__room.getType()})\n"
-            f"  Llegada: {self.__checkIn} | Salida: {self.__checkOut}\n"
-            f"  Servicios Adicionales: {len(self.__services)}"
+            f"--- Information of Reservation #{self.__id} ---\n"
+            f"  Customer: {customer_name}\n"
+            f"  Room: {room_id} ({self.__room.getType()})\n"
+            f"  Check-in: {self.__checkIn} | Check-out: {self.__checkOut}\n"
+            f"  Additional Services: {len(self.__services)}"
         )
         print(info)
         return info

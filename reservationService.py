@@ -4,7 +4,7 @@ class ServiceReservation:
     """
     def __init__(self, id, date_time, customer, service):
         self.__id = id
-        self.__date_time = date_time # Fecha y hora de solicitud/entrega
+        self.__date_time = date_time
         self.__customer = customer
         self.__service = service
         
@@ -34,8 +34,8 @@ class ServiceReservation:
     def showInfo(self):
         """Devuelve una cadena con la información de la reserva de servicio."""
         return (
-            f"--- [SERVICIO] Reserva #{self.__id} ---\n"
-            f"  Cliente: {self.__customer.getName()} ({self.__customer.getEmail()})\n"
-            f"  Servicio: {self.__service.getType()} | Costo: ${self.__service.getCost():.2f}\n"
-            f"  Fecha/Hora Solicitada: {self.__date_time}"
+            f"--- [SERVICE] Reservation #{self.__id} ---\n"
+            f"  Customer: {self.__customer.getName()} ({self.__customer.getEmail()})\n"
+            f"  Service: {self.__service.getType()} | Cost: ${self.__service.getCost():.2f}\n"
+            f"  Requested Date/Time: {self.__date_time}"
         )
