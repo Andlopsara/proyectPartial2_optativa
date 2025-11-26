@@ -1,6 +1,7 @@
 class Room:
-    def __init__(self, id, type, status="Available", cost=0.0, description=""):
+    def __init__(self, id, room_number, type, status="Available", cost=0.0, description=""):
         self.__id = id
+        self.__room_number = room_number
         self.__type = type
         self.__status = status
         self.__cost = cost
@@ -9,6 +10,9 @@ class Room:
     # -------- Getters and Setters --------
     def getId(self): return self.__id
     def setId(self, id): self.__id = id
+
+    def getRoomNumber(self): return self.__room_number
+    def setRoomNumber(self, room_number): self.__room_number = room_number
 
     def getType(self): return self.__type
     def setType(self, type): self.__type = type

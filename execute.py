@@ -15,6 +15,12 @@ from receptionist import Receptionist
 from bellboy import Bellboy
 from payment import Payment
 
+# Importar los DAOs que vamos a usar
+from dao.employee_dao import EmployeeDAO
+from dao.ServiceDAO import ServiceDAO
+from dao.customer_dao import CustomerDAO
+from dao.room_dao import RoomDAO
+
 # ----------------- PALETA DE COLORES Y ESTILOS (TEMA LUJO) -----------------
 # Colores
 COLOR_PRIMARY = '#1A237E'      # Azul Marino Profundo (Barra lateral/Encabezados)
@@ -35,47 +41,34 @@ FONT_BUTTON = ('Segoe UI', 10, 'bold')
 
 # ----------------- Funciones de Inicialización de Datos -----------------
 # Lógica idéntica a la original, sin cambios funcionales
-def init_data():
-    customer1 = Customer(1, "Andrea", "Sarahi", "Lopez", "Guerrero", "4420000000", "andrea@mail.com", "Querétaro", "LOGA001122QRO", password="andrea123")
-    customer2 = Customer(2, "Juan", "", "Perez", "Vera", "4423333333", "juan@mail.com", "Querétaro", "PEVJ001122QRO", password="juan123")
-    receptionist = Receptionist(1, "Brigitte", "", "Herrera", "Rodriguez", "4421111111", "brigitte@mail.com", "Activo", "HERB001122QRO", password="brigitte123")
-    
-    rooms = {}
-    room_types = ["Suite", "Doble", "Individual"]
-    room_costs = {"Suite": 1500.0, "Doble": 900.0, "Individual": 600.0}
-    
-    import random
-    random.seed(42)
-    
-    for i in range(100):
-        room_id = 101 + i
-        room_type = room_types[i % 3]
-        cost = room_costs[room_type]
-        status = "No disponible" if random.random() < 0.2 else "Disponible"
-        description = f"Habitación {room_type} con capacidad para {2 if room_type == 'Individual' else 4} personas"
-        rooms[room_id] = Room(room_id, room_type, status, cost, description)
-    
-    service1 = Service(1, "Desayuno a la Habitación", 150.0, "Desayuno continental.")
-    service2 = Service(2, "Lavandería Express", 200.0, "Lavado en < 3 horas.")
-    service3 = Service(3, "Masaje Relajante", 500.0, "Sesión de 60 min.")
-    
-    reservation1 = Reservation(1, "2025-10-10", "2025-10-15", customer1, rooms[103], None)
-    rooms[103].setStatus("No disponible") 
-    customer1.makeReservation(reservation1)
-    
-    service_reservation1 = ServiceReservation(101, "2025-10-11 08:00", customer1, service1)
-    customer1.makeServiceReservation(service_reservation1)
-    
-    service_reservation2 = ServiceReservation(102, "2025-10-12 12:30", customer2, service3)
-    customer2.makeServiceReservation(service_reservation2)
-    
+def init_data_from_db():
+    """
+    Carga los datos iniciales desde la base de datos usando los DAOs.
+    """
+    print("--- Cargando datos iniciales desde la Base de Datos ---")
+    customer_dao = CustomerDAO()
+    employee_dao = EmployeeDAO()
+    service_dao = ServiceDAO()
+    room_dao = RoomDAO()
+
+    # Cargar todos los clientes, empleados y servicios
+    all_customers = customer_dao.get_all()
+    all_employees = employee_dao.get_all()
+    all_services = service_dao.get_all()
+    all_rooms = room_dao.get_all()
+
+    # TODO: Cargar Habitaciones, Reservas, etc., cuando sus DAOs existan.
+    # Por ahora, los dejamos como diccionarios vacíos.
+    reservations = {} # Reemplazar con ReservationDAO().get_all()
+    service_reservations = {} # Reemplazar con ServiceReservationDAO().get_all()
+
     return {
-        'customers': {c.getEmail(): c for c in [customer1, customer2]}, 
-        'employees': {'1': receptionist}, 
-        'rooms': rooms,
-        'reservations': {1: reservation1},
-        'service_reservations': {101: service_reservation1, 102: service_reservation2},
-        'services': {s.getId(): s for s in [service1, service2, service3]}
+        'customers': {c.getEmail(): c for c in all_customers}, 
+        'employees': {e.getEmail(): e for e in all_employees}, 
+        'rooms': {r.getId(): r for r in all_rooms},
+        'reservations': reservations,
+        'service_reservations': service_reservations,
+        'services': {s.getId(): s for s in all_services}
     }
 
 # Función para centrar la ventana
@@ -131,7 +124,7 @@ class HotelGUI:
         self.container = ttk.Frame(master)
         self.container.pack(fill="both", expand=True)
         
-        self.data = init_data()
+        self.data = init_data_from_db()
         
         self.next_reservation_id = max(self.data['reservations'].keys()) + 1 if self.data['reservations'] else 1
         self.next_service_reservation_id = max(self.data['service_reservations'].keys()) + 1 if self.data['service_reservations'] else 1
@@ -139,6 +132,13 @@ class HotelGUI:
         self.data['payments'] = {}
         
         self.frames = {}
+
+        # --- Instancias de DAO para la aplicación ---
+        self.employee_dao = EmployeeDAO()
+        self.service_dao = ServiceDAO()
+        self.customer_dao = CustomerDAO()
+        self.room_dao = RoomDAO()
+        # Aquí instanciarías otros DAOs como CustomerDAO, RoomDAO, etc.
 
         for F in (WelcomeScreen, LoginFormScreen, LoginSuccessScreen, MainMenuScreen):
             page_name = F.__name__
@@ -222,7 +222,7 @@ class CreateServiceReservationWindow(tk.Toplevel):
         self.room_number_entry.insert(0, "101")
 
         ttk.Label(form_frame, text="Servicio", style='Card.TLabel', font=FONT_BODY_BOLD).pack(anchor='w')
-        self.services = self.controller.data['services']
+        self.services = self.controller.data.get('services', {})
         service_options = [f"{s.getId()}: {s.getType()} (${s.getCost():.2f})" for s in self.services.values()]
         
         self.service_var = tk.StringVar(form_frame)
@@ -411,10 +411,10 @@ class LoginFormScreen(ttk.Frame):
         self.login_type = login_type
         if login_type == "Customer":
             self.title_label.config(text="ACCESO HUÉSPED")
-            self.email_entry.delete(0, tk.END); self.email_entry.insert(0, "andrea@mail.com")
+            self.email_entry.delete(0, tk.END)
         else: 
             self.title_label.config(text="ACCESO EMPLEADO")
-            self.email_entry.delete(0, tk.END); self.email_entry.insert(0, "brigitte@mail.com")
+            self.email_entry.delete(0, tk.END)
 
     def login(self):
         email = self.email_entry.get().strip()
@@ -427,7 +427,7 @@ class LoginFormScreen(ttk.Frame):
             else:
                 messagebox.showerror("Error", "Credenciales inválidas.")
         else: 
-            user_obj = next((emp for emp in self.controller.data['employees'].values() if getattr(emp, 'getEmail', lambda: None)() == email), None)
+            user_obj = self.controller.data['employees'].get(email)
             if user_obj and user_obj.getPassword() == password:
                 self.controller.show_frame("MainMenuScreen", user_type="Employee", user_obj=user_obj)
             else:
@@ -566,12 +566,18 @@ class CreateReservationWindow(tk.Toplevel):
         self.out_entry = ttk.Entry(f); self.out_entry.insert(0, "2025-12-31"); self.out_entry.grid(row=3, column=1, pady=10)
 
         # Simulación simple de disponibilidad (sin lista completa para ahorrar espacio visual)
-        self.create_field(f, "Habitación ID:", 4)
-        self.room_id_entry = ttk.Entry(f); self.room_id_entry.insert(0, "101"); self.room_id_entry.grid(row=4, column=1, pady=10)
+        self.create_field(f, "Habitación Disponible:", 4)
+        all_rooms = self.controller.data.get('rooms', {}).values()
+        available_rooms = [r for r in all_rooms if r.getStatus().lower() == 'available']
+        room_options = [f"{r.getId()}: {r.getType()} (${r.getCost():.2f})" for r in available_rooms]
+        self.room_var = tk.StringVar()
+        self.room_cb = ttk.Combobox(f, textvariable=self.room_var, values=room_options, state='readonly')
+        self.room_cb.grid(row=4, column=1, pady=10)
+        if room_options: self.room_cb.set(room_options[0])
         
         # Agregar opción de servicio adicional
         ttk.Label(f, text="Servicio Adicional:", style='Card.TLabel', font=FONT_BODY_BOLD).grid(row=5, column=0, sticky='w', padx=10)
-        services = controller.data.get('services', {})
+        services = self.controller.data.get('services', {})
         service_options = ["Ninguno"] + [f"{s.getId()}: {s.getType()} (${s.getCost():.2f})" for s in services.values()]
         self.service_var = tk.StringVar(value="Ninguno")
         self.service_cb = ttk.Combobox(f, textvariable=self.service_var, values=service_options, state='readonly')
@@ -586,13 +592,14 @@ class CreateReservationWindow(tk.Toplevel):
     def process(self):
         # Lógica simplificada invocando la lógica original si es posible
         # Validar entradas antes de crear la reserva
+        room_info = self.room_var.get()
         try:
-            rid = int(self.room_id_entry.get())
+            rid = int(room_info.split(':')[0])
         except Exception:
-            messagebox.showerror("Error", "ID de habitación inválido.")
+            messagebox.showerror("Error", "Debe seleccionar una habitación válida.")
             return
 
-        room = self.controller.data['rooms'].get(rid)
+        room = self.controller.data.get('rooms', {}).get(rid)
         cust = self.controller.data['customers'].get(self.email_entry.get())
 
         if not room or not cust:
@@ -852,13 +859,23 @@ class RegisterCustomerWindow(tk.Toplevel):
 
     def save(self):
         # Lógica resumida
-        d = {k: v.get() for k, v in self.entries.items()}
-        # Crear ID simple
-        nid = len(self.controller.data['customers']) + 10
-        new_c = Customer(nid, d['first_name'], "", d['last_name'], "", d['phone'], d['email'], d['state'], d['curp'], self.pw.get())
-        self.controller.add_new_customer(new_c)
-        messagebox.showinfo("OK", "Cliente registrado")
-        self.destroy()
+        data = {k: v.get().strip() for k, v in self.entries.items()}
+        password = self.pw.get().strip()
+
+        if not all([data.get('first_name'), data.get('last_name'), data.get('email'), password]):
+            messagebox.showwarning("Datos Incompletos", "Nombre, apellido, email y contraseña son obligatorios.")
+            return
+
+        new_customer = Customer(0, data['first_name'], "", data['last_name'], "", data['phone'], data['email'], data['state'], data['curp'], password)
+        
+        new_id = self.controller.customer_dao.create(new_customer)
+        if new_id:
+            messagebox.showinfo("Registro Exitoso", f"Cliente {new_customer.getName()} registrado con ID: {new_id}.")
+            # ACTUALIZAR DATOS EN MEMORIA: Añadir el nuevo cliente a la sesión actual.
+            self.controller.data['customers'][new_customer.getEmail()] = new_customer
+            self.destroy()
+        else:
+            messagebox.showerror("Error de Base de Datos", "No se pudo registrar al cliente. Revise la consola.")
 
 class RegisterEmployeeWindow(tk.Toplevel):
     def __init__(self, master, controller):
@@ -923,6 +940,7 @@ class RegisterEmployeeWindow(tk.Toplevel):
         except Exception:
             new_id = 1
 
+        # --- LÓGICA DE PERSISTENCIA CON DAO ---
         role = self.role_var.get()
         # Crear la instancia según role
         if role == 'Recepcionista':
@@ -931,10 +949,17 @@ class RegisterEmployeeWindow(tk.Toplevel):
             new_emp = Bellboy(new_id, data['first_name'], data.get('middle_name',''), data['last_name'], data.get('second_last_name',''), data['phone'], data['email'], data['status'], data['curp'], password)
         else:
             new_emp = Employee(new_id, data['first_name'], data.get('middle_name',''), data['last_name'], data.get('second_last_name',''), data['phone'], data['email'], data['status'], data['curp'], password)
-
-        self.controller.add_new_employee(new_emp)
-        messagebox.showinfo("Registro Exitoso", f"Empleado {data['first_name']} {data['last_name']} registrado.")
-        self.destroy()
+        
+        # Usar el DAO para guardar en la base de datos
+        new_id_from_db = self.controller.employee_dao.create(new_emp)
+        
+        if new_id_from_db:
+            messagebox.showinfo("Registro Exitoso", f"Empleado {new_emp.getFirstName()} registrado en la base de datos con ID: {new_id_from_db}.")
+            # ACTUALIZAR DATOS EN MEMORIA: Añadir el nuevo empleado a la sesión actual.
+            self.controller.data['employees'][new_emp.getEmail()] = new_emp
+            self.destroy()
+        else:
+            messagebox.showerror("Error de Base de Datos", "No se pudo registrar al empleado. Revise la consola para más detalles.")
 
     def go_back(self):
         try:

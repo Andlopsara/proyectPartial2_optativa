@@ -21,12 +21,11 @@ class EmployeeDAO:
 
     # C - CREATE: Inserta un nuevo Empleado (o subclase)
     def create(self, emp: Employee) -> Optional[int]:
-        conn = get_conn()
-        cursor = conn.cursor()
-        
+        conn = None
+        cursor = None
         # El rol se determina por el tipo de instancia (Receptionist, Bellboy, Employee)
         role = type(emp).__name__
-        if role not in self.ROLE_MAPPING:
+        if role not in self.ROLE_MAPPING: # type: ignore
             role = "Employee"
 
         query = """
@@ -41,6 +40,8 @@ class EmployeeDAO:
         )
         
         try:
+            conn = get_conn()
+            cursor = conn.cursor()
             cursor.execute(query, values)
             conn.commit()
             emp_id = cursor.lastrowid
@@ -48,11 +49,14 @@ class EmployeeDAO:
             return emp_id
         except mysql.connector.Error as err:
             print(f"Error CREATE Employee: {err}")
-            conn.rollback()
+            if conn:
+                conn.rollback()
             return None
         finally:
-            cursor.close()
-            close_conn(conn)
+            if cursor:
+                cursor.close()
+            if conn:
+                close_conn(conn)
 
     # R - READ: Obtiene un Empleado (o subclase) por ID
     def get_by_id(self, emp_id: int) -> Optional[Employee]:
@@ -86,6 +90,38 @@ class EmployeeDAO:
             cursor.close()
             close_conn(conn)
             
+    # R - READ ALL: Obtiene todos los Empleados
+    def get_all(self) -> List[Employee]:
+        conn = None
+        cursor = None
+        employees = []
+        query = """
+            SELECT employee_id, first_name, second_name, last_name, second_last_name, 
+                   phone, email, status, curp, password_hash, role 
+            FROM EMPLOYEES
+        """
+        try:
+            conn = get_conn()
+            cursor = conn.cursor()
+            cursor.execute(query)
+            records = cursor.fetchall()
+            for record in records:
+                (id, fName, sName, lName, sLName, phone, email, status, curp, password, role) = record
+                # Usamos el mismo mapeo que en get_by_id para instanciar la clase correcta
+                EmployeeClass = self.ROLE_MAPPING.get(role, Employee)
+                employees.append(
+                    EmployeeClass(id, fName, sName, lName, sLName, phone, email, status, curp, password)
+                )
+            print(f"INFO: Se cargaron {len(employees)} empleados desde la BD.")
+        except mysql.connector.Error as err:
+            print(f"Error READ ALL Employees: {err}")
+        finally:
+            if cursor:
+                cursor.close()
+            if conn:
+                close_conn(conn)
+        return employees
+
     # U - UPDATE: Actualiza el estado de un Empleado
     def update_status(self, emp_id: int, new_status: str) -> bool:
         conn = get_conn()

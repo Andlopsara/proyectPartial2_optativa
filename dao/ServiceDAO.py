@@ -10,8 +10,8 @@ class ServiceDAO:
 
     # C - CREATE: Agrega un nuevo servicio al hotel
     def create(self, svc: Service) -> Optional[int]:
-        conn = get_conn()
-        cursor = conn.cursor()
+        conn = None
+        cursor = None
         
         # Mapeamos service.getType() a la columna 'name' de la BD
         query = """
@@ -24,6 +24,8 @@ class ServiceDAO:
         )
         
         try:
+            conn = get_conn()
+            cursor = conn.cursor()
             cursor.execute(query, values)
             conn.commit()
             svc_id = cursor.lastrowid
@@ -31,11 +33,14 @@ class ServiceDAO:
             return svc_id
         except mysql.connector.Error as err:
             print(f"Error CREATE Service: {err}")
-            conn.rollback()
+            if conn:
+                conn.rollback()
             return None
         finally:
-            cursor.close()
-            close_conn(conn)
+            if cursor:
+                cursor.close()
+            if conn:
+                close_conn(conn)
 
     # R - READ: Obtiene un servicio por ID
     def get_by_id(self, service_id: int) -> Optional[Service]:
@@ -63,25 +68,26 @@ class ServiceDAO:
 
     # R - READ ALL: Obtiene todos los servicios
     def get_all(self) -> List[Service]:
-        conn = get_conn()
-        cursor = conn.cursor()
-        
-        query = "SELECT service_id, name, cost, description FROM SERVICES"
+        conn = None
+        cursor = None
         services = []
-        
+        query = "SELECT service_id, name, cost, description FROM SERVICES"
         try:
+            conn = get_conn()
+            cursor = conn.cursor()
             cursor.execute(query)
             records = cursor.fetchall()
-            
             for id, type_name, cost, description in records:
                 services.append(Service(id, type_name, cost, description))
-            return services
+            print(f"INFO: Se cargaron {len(services)} servicios desde la BD.")
         except mysql.connector.Error as err:
             print(f"Error READ ALL Services: {err}")
-            return []
         finally:
-            cursor.close()
-            close_conn(conn)
+            if cursor:
+                cursor.close()
+            if conn:
+                close_conn(conn)
+        return services
 
     # D - DELETE: Elimina un servicio
     def delete(self, service_id: int) -> bool:
