@@ -7,7 +7,7 @@ load_dotenv()
 # Variables de conexión con valores por defecto
 HOST = os.getenv("DB_HOST", "localhost")
 PORT = int(os.getenv("DB_PORT", "3306"))
-DATABASE = os.getenv("DB_NAME", "hotel_db")
+DATABASE = os.getenv("DB_NAME", "hotel_le_villa")
 USER = os.getenv("DB_USER", "root")
 PASSWORD = os.getenv("DB_PASSWORD", "")
 POOL_SIZE = int(os.getenv("POOL_SIZE", "5"))

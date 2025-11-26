@@ -33,12 +33,26 @@ class DBConnection:
         # Devuelve la conexión al pool
         connection.close()
 
+# --- Singleton Pattern: Instancia única para toda la aplicación ---
+try:
+    # Creamos una instancia global que será compartida
+    _db_connection_instance = DBConnection()
+
+    def get_conn():
+        """Obtiene una conexión del pool global."""
+        return _db_connection_instance.get_connection()
+
+    def close_conn(connection):
+        """Devuelve una conexión al pool global."""
+        _db_connection_instance.close_connection(connection)
+
+except (mysql.connector.Error, ValueError, TypeError) as e:
+    print(f"CRITICAL: No se pudo inicializar el pool de conexiones a la BD: {e}")
+    # Si la BD no está, las funciones no existirán y la app fallará al importar, lo cual es correcto.
+    raise
+
 # Para prueba inicial:
 if __name__ == '__main__':
-    try:
-        db = DBConnection()
-        conn = db.get_connection()
-        print(f"Conexión exitosa. ID de conexión: {conn.connection_id}")
-        db.close_connection(conn)
-    except (ValueError, TypeError, mysql.connector.Error) as e:
-        print(f"Fallo la prueba de conexión: {e}")
+    conn_test = get_conn()
+    print(f"Conexión de prueba exitosa. ID: {conn_test.connection_id}")
+    close_conn(conn_test)
