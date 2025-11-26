@@ -20,6 +20,8 @@ from dao.employee_dao import EmployeeDAO
 from dao.ServiceDAO import ServiceDAO
 from dao.customer_dao import CustomerDAO
 from dao.room_dao import RoomDAO
+from dao.payment_dao import PaymentDAO
+from dao.reservation_dao import ReservationDAO
 
 # ----------------- PALETA DE COLORES Y ESTILOS (TEMA LUJO) -----------------
 # Colores
@@ -50,23 +52,24 @@ def init_data_from_db():
     employee_dao = EmployeeDAO()
     service_dao = ServiceDAO()
     room_dao = RoomDAO()
+    reservation_dao = ReservationDAO()
 
     # Cargar todos los clientes, empleados y servicios
     all_customers = customer_dao.get_all()
     all_employees = employee_dao.get_all()
     all_services = service_dao.get_all()
     all_rooms = room_dao.get_all()
+    all_reservations = reservation_dao.get_all()
 
     # TODO: Cargar Habitaciones, Reservas, etc., cuando sus DAOs existan.
     # Por ahora, los dejamos como diccionarios vacíos.
-    reservations = {} # Reemplazar con ReservationDAO().get_all()
     service_reservations = {} # Reemplazar con ServiceReservationDAO().get_all()
 
     return {
         'customers': {c.getEmail(): c for c in all_customers}, 
         'employees': {e.getEmail(): e for e in all_employees}, 
-        'rooms': {r.getId(): r for r in all_rooms},
-        'reservations': reservations,
+        'rooms': {r.getId(): r for r in all_rooms}, # type: ignore
+        'reservations': {r.getId(): r for r in all_reservations},
         'service_reservations': service_reservations,
         'services': {s.getId(): s for s in all_services}
     }
@@ -138,6 +141,8 @@ class HotelGUI:
         self.service_dao = ServiceDAO()
         self.customer_dao = CustomerDAO()
         self.room_dao = RoomDAO()
+        self.payment_dao = PaymentDAO()
+        self.reservation_dao = ReservationDAO()
         # Aquí instanciarías otros DAOs como CustomerDAO, RoomDAO, etc.
 
         for F in (WelcomeScreen, LoginFormScreen, LoginSuccessScreen, MainMenuScreen):
@@ -329,8 +334,12 @@ class PaymentServiceWindow(tk.Toplevel):
             self.reservation
         )
         payment.processPayment()
-        self.controller.add_new_payment(payment)
-        messagebox.showinfo("Pago Exitoso", "El pago ha sido procesado correctamente.")
+        # Guardar en la base de datos
+        new_payment_id = self.controller.payment_dao.create(payment)
+        if new_payment_id:
+            messagebox.showinfo("Pago Exitoso", f"El pago #{new_payment_id} ha sido procesado y guardado.")
+        else:
+            messagebox.showerror("Error de Base de Datos", "El pago fue procesado pero no se pudo guardar en la base de datos.")
         self.destroy()
 
 # ----------------- Pantallas Principales -----------------
@@ -626,9 +635,6 @@ class CreateReservationWindow(tk.Toplevel):
                 messagebox.showerror("Error", "Habitación no disponible.")
                 return
 
-            # Añadir reserva al controlador
-            self.controller.add_new_reservation(res)
-
             # Calcular noches y subtotales
             num_nights = (check_out - check_in).days
             room_subtotal = room.getCost() * num_nights
@@ -648,6 +654,12 @@ class CreateReservationWindow(tk.Toplevel):
                     additional_service = None
 
             total_cost = room_subtotal + service_subtotal
+
+            # Guardar la reserva en la base de datos ANTES de ir al pago
+            new_res_id = self.controller.reservation_dao.create(res, total_cost)
+            if not new_res_id:
+                messagebox.showerror("Error de Base de Datos", "No se pudo registrar la reserva. Intente de nuevo.")
+                return
 
             PaymentWindow(self.master, self.controller, res, total_cost, cust, additional_service, room_subtotal, service_subtotal)
             self.destroy()
@@ -709,8 +721,14 @@ class PaymentWindow(tk.Toplevel):
     def pay(self):
         p = Payment(self.controller.next_payment_id, self.total_cost, self.method.get(), self.reservation)
         p.processPayment()
-        self.controller.add_new_payment(p)
-        messagebox.showinfo("Éxito", "Pago completado.")
+        # Guardar en la base de datos
+        new_payment_id = self.controller.payment_dao.create(p)
+        if new_payment_id:
+            messagebox.showinfo("Éxito", f"Pago #{new_payment_id} completado y guardado.")
+            # Asociar el pago a la reserva en la base de datos
+            self.controller.reservation_dao.link_payment(self.reservation.getId(), new_payment_id)
+        else:
+            messagebox.showerror("Error de Base de Datos", "El pago fue procesado pero no se pudo guardar en la base de datos.")
         self.destroy()
 
 
@@ -721,39 +739,85 @@ class ViewReservationsWindow(tk.Toplevel):
         self.title("Reservas")
         center_window(self, 600, 420)
         self.configure(bg=COLOR_BG)
-
+        
         card = ttk.Frame(self, style='Card.TFrame', padding=20)
         card.pack(fill='both', expand=True, padx=20, pady=20)
         ttk.Label(card, text="Reservas", style='Title.TLabel').pack(pady=(0,10))
+        
+        # --- Treeview para mostrar las reservas en una tabla ---
+        tree_frame = ttk.Frame(card)
+        tree_frame.pack(fill='both', expand=True, pady=5)
+        
+        columns = ('id', 'customer', 'room', 'check_in', 'check_out', 'cost')
+        self.tree = ttk.Treeview(tree_frame, columns=columns, show='headings')
+        
+        # Definir encabezados
+        self.tree.heading('id', text='ID')
+        self.tree.heading('customer', text='Cliente')
+        self.tree.heading('room', text='Habitación')
+        self.tree.heading('check_in', text='Check-In')
+        self.tree.heading('check_out', text='Check-Out')
+        self.tree.heading('cost', text='Costo Total')
+        
+        # Configurar columnas
+        self.tree.column('id', width=50, anchor='center')
+        self.tree.column('customer', width=150)
+        self.tree.column('room', width=80, anchor='center')
+        self.tree.column('check_in', width=100, anchor='center')
+        self.tree.column('check_out', width=100, anchor='center')
+        self.tree.column('cost', width=80, anchor='e')
 
-        text_frame = ttk.Frame(card, style='Card.TFrame')
-        text_frame.pack(fill='both', expand=True)
+        self.tree.pack(side='left', fill='both', expand=True)
+        
+        scrollbar = ttk.Scrollbar(tree_frame, orient='vertical', command=self.tree.yview)
+        self.tree.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side='right', fill='y')
 
-        txt = tk.Text(text_frame, wrap='word', bg=COLOR_WHITE, fg=COLOR_TEXT)
-        txt.pack(side='left', fill='both', expand=True)
-        sb = ttk.Scrollbar(text_frame, orient='vertical', command=txt.yview)
-        sb.pack(side='right', fill='y')
-        txt.configure(yscrollcommand=sb.set)
+        # Llenar la tabla con datos
+        self.load_reservations()
 
-        # Cargar reservas según rol
-        if controller.frames.get('MainMenuScreen') and controller.frames['MainMenuScreen'].user_type == 'Employee':
-            reservations = list(controller.data.get('reservations', {}).values())
-        else:
-            user = controller.frames.get('MainMenuScreen') and controller.frames['MainMenuScreen'].user_obj
-            reservations = user.getReservations() if user else []
+        # --- Botones de acción ---
+        btn_frame = ttk.Frame(card, style='Card.TFrame')
+        btn_frame.pack(fill='x', pady=(10, 0))
 
-        if not reservations:
-            txt.insert('end', 'No hay reservas para mostrar.')
-        else:
-            for r in reservations:
-                try:
-                    txt.insert('end', r.showInfo() + '\n' + ('-'*60) + '\n')
-                except Exception:
-                    txt.insert('end', str(r) + '\n' + ('-'*60) + '\n')
+        # El botón de eliminar solo es visible para empleados
+        if self.controller.frames['MainMenuScreen'].user_type == 'Employee':
+            ModernButton(btn_frame, text="❌ Eliminar Reserva Seleccionada", type="secondary", command=self.delete_selected_reservation).pack(side='left')
 
-        txt.config(state='disabled')
+        ModernButton(btn_frame, text="Cerrar", command=self.destroy).pack(side='right')
 
-        ModernButton(card, text="REGRESAR", type='secondary', command=self.destroy).pack(fill='x', pady=10)
+    def load_reservations(self):
+        # Limpiar tabla antes de cargar
+        for i in self.tree.get_children():
+            self.tree.delete(i)
+        
+        # Cargar todas las reservas (los empleados ven todo)
+        reservations = self.controller.data.get('reservations', {}).values()
+        for res in sorted(reservations, key=lambda r: r.getId()):
+            customer_name = res.getCustomer().getName()
+            room_number = res.getRoom().getRoomNumber()
+            total_cost = f"${res.getRoom().getCost():.2f}" # Simplificado, el costo real está en la tabla RESERVATIONS
+            self.tree.insert('', 'end', values=(res.getId(), customer_name, room_number, res.getCheckIn(), res.getCheckOut(), total_cost))
+
+    def delete_selected_reservation(self):
+        selected_item = self.tree.focus()
+        if not selected_item:
+            messagebox.showwarning("Sin Selección", "Por favor, seleccione una reserva de la lista para eliminar.")
+            return
+
+        values = self.tree.item(selected_item, 'values')
+        reservation_id = int(values[0])
+        customer_name = values[1]
+
+        if messagebox.askyesno("Confirmar Eliminación", f"¿Está seguro de que desea eliminar la reserva #{reservation_id} de {customer_name}?"):
+            if self.controller.reservation_dao.delete(reservation_id):
+                messagebox.showinfo("Éxito", f"La reserva #{reservation_id} ha sido eliminada.")
+                # Eliminar de la vista
+                self.tree.delete(selected_item)
+                # Opcional: recargar todo
+                # self.load_reservations() 
+            else:
+                messagebox.showerror("Error de Base de Datos", "No se pudo eliminar la reserva.")
 
 
 class ViewServicesWindow(tk.Toplevel):
